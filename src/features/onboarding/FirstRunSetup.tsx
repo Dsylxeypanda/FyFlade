@@ -116,7 +116,7 @@ export function FirstRunSetup({
       <div style={{ width: 520, maxWidth: "calc(100vw - 32px)", border: `1px solid ${colors.border}`, borderRadius: 10, background: colors.panel, color: colors.text, boxShadow: "0 22px 70px rgba(0,0,0,.62)", overflow: "hidden" }}>
         {stage === "welcome" ? (
           <div style={{ padding: "30px 28px 26px", textAlign: "center" }}>
-            <img src="/chatnest-logo.png" alt="" style={{ width: 70, height: 70, objectFit: "contain" }} />
+            <img src="/fyflade-logo.png" alt="" style={{ width: 70, height: 70, objectFit: "contain" }} />
             <div style={{ marginTop: 12, fontSize: 24, fontWeight: 900 }}>
               {no ? "Velkommen til FyFlade" : "Welcome to FyFlade"}
             </div>

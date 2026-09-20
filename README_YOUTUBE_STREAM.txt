@@ -1,4 +1,4 @@
-ChatNest - YouTube streamList pack
+FyFlade - YouTube streamList pack
 
 Mål:
 - Bytter YouTube livechat fra gjentatt liveChatMessages.list polling til Googles offisielle
@@ -14,7 +14,7 @@ Plassering:
 2) src-tauri/src/lib.rs
 3) src-tauri/build.rs
 4) src-tauri/proto/youtube_live_chat.proto
-5) Kjør PATCH_CARGO_YOUTUBE_STREAM.ps1 fra ChatNest-hovedmappen.
+5) Kjør PATCH_CARGO_YOUTUBE_STREAM.ps1 fra FyFlade-hovedmappen.
 6) npm run tauri dev
 
 Ingen separat protoc-installasjon er nødvendig. protoc-bin-vendored følger via Cargo.

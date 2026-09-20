@@ -121,7 +121,7 @@ import {
   type PlatformConnectionHealth,
 } from "./features/reliability/reliability";
 
-// ChatNest: Accounts + 7TV/BTTV + Picker + Autocomplete + 7TV Live Sync + YouTube OAuth + YouTube live chat streaming
+// FyFlade: Accounts + 7TV/BTTV + Picker + Autocomplete + 7TV Live Sync + YouTube OAuth + YouTube live chat streaming
 
 const SAVED_CHANNELS_KEY =
   "chatnest.twitch.channels.v1";
@@ -263,7 +263,7 @@ const ANONYMOUS_USAGE_LAST_SENT_DAY_KEY =
 const AUTO_UPDATE_CHECK_INTERVAL_MS =
   6 * 60 * 60 * 1000;
 
-const CHATNEST_VERSION =
+const FYFLADE_VERSION =
   "1.0.0";
 
 const FYFLATE_DISPLAY_VERSION =
@@ -6092,7 +6092,7 @@ function App() {
       !FYFLATE_WINDOW_MODE &&
       hasCompletedOnboarding() &&
       readLastSeenVersion() !==
-        CHATNEST_VERSION
+        FYFLADE_VERSION
   );
 
   const [
@@ -8767,7 +8767,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       const initialTimer =
         window.setTimeout(
           () => {
-            void checkForChatNestUpdate(
+            void checkForFyFladeUpdate(
               false
             );
           },
@@ -8777,7 +8777,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       const interval =
         window.setInterval(
           () => {
-            void checkForChatNestUpdate(
+            void checkForFyFladeUpdate(
               false
             );
           },
@@ -11175,7 +11175,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     );
   }
 
-  async function checkForChatNestUpdate(
+  async function checkForFyFladeUpdate(
     manual: boolean
   ) {
     if (
@@ -11257,7 +11257,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
         );
 
       console.error(
-        "ChatNest update check failed",
+        "FyFlade update check failed",
         error
       );
       setUpdateError(message);
@@ -11272,7 +11272,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     }
   }
 
-  async function installChatNestUpdate() {
+  async function installFyFladeUpdate() {
     if (
       updateOperationRef.current
     ) {
@@ -11283,7 +11283,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       availableUpdateRef.current;
 
     if (!update) {
-      await checkForChatNestUpdate(
+      await checkForFyFladeUpdate(
         true
       );
       update =
@@ -11367,7 +11367,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
         );
 
       console.error(
-        "ChatNest update installation failed",
+        "FyFlade update installation failed",
         error
       );
       setUpdateError(message);
@@ -11471,10 +11471,10 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     return settings;
   }
 
-  function exportChatNestBackup() {
+  function exportFyFladeBackup() {
     try {
       const backup = {
-        app: "Fyflate",
+        app: "FyFlade",
         version: 1,
         createdAt:
           new Date().toISOString(),
@@ -11531,7 +11531,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     }
   }
 
-  async function importChatNestBackup(
+  async function importFyFladeBackup(
     file: File
   ) {
     setBackupStatus("");
@@ -11548,6 +11548,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
       if (
         (
+          parsed.app !== "FyFlade" &&
           parsed.app !== "Fyflate" &&
           parsed.app !== "Fy Flate" &&
           parsed.app !== "ChatNest"
@@ -22903,7 +22904,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       batch
         .map(
           (_, index) =>
-            `u${index}: userByConnection(platform: $platform${index}, platformId: $platformId${index}) { ...ChatNestSevenTvUserCosmetics }`
+            `u${index}: userByConnection(platform: $platform${index}, platformId: $platformId${index}) { ...FyFladeSevenTvUserCosmetics }`
         )
         .join(
           "\n"
@@ -22929,13 +22930,13 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     );
 
     const query = `
-      query ChatNestSevenTvCosmetics(${variableDefinitions}) {
+      query FyFladeSevenTvCosmetics(${variableDefinitions}) {
         users {
           ${userSelections}
         }
       }
 
-      fragment ChatNestSevenTvUserCosmetics on User {
+      fragment FyFladeSevenTvUserCosmetics on User {
         id
         style {
           activeBadge {
@@ -39543,7 +39544,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
     if (completedBasic) {
       markOnboardingComplete(
-        CHATNEST_VERSION
+        FYFLADE_VERSION
       );
     }
   }
@@ -39572,7 +39573,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       !hasCompletedOnboarding()
     ) {
       markOnboardingComplete(
-        CHATNEST_VERSION
+        FYFLADE_VERSION
       );
     }
 
@@ -39581,7 +39582,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
   function skipFirstRun() {
     markOnboardingComplete(
-      CHATNEST_VERSION
+      FYFLADE_VERSION
     );
     setFirstRunStage(null);
   }
@@ -39593,7 +39594,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       startTutorial("basic");
     } else {
       markOnboardingComplete(
-        CHATNEST_VERSION
+        FYFLADE_VERSION
       );
     }
   }
@@ -39640,14 +39641,14 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
   function closeWhatsNewPanel() {
     markVersionSeen(
-      CHATNEST_VERSION
+      FYFLADE_VERSION
     );
     setShowWhatsNew(false);
   }
 
   function showWhatsNewTour() {
     markVersionSeen(
-      CHATNEST_VERSION
+      FYFLADE_VERSION
     );
     setShowWhatsNew(false);
     startTutorial("obs");
@@ -40172,7 +40173,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                 }}
               >
                 <img
-                  src="/chatnest-logo.png"
+                  src="/fyflade-logo.png"
                   alt=""
                   style={{ width: 44, height: 44, objectFit: "contain" }}
                 />
@@ -40453,7 +40454,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
           }}
         >
           <img
-            src="/chatnest-logo.png"
+            src="/fyflade-logo.png"
             alt=""
             style={{
               width: 38,
@@ -43808,7 +43809,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
           </div>
           <button
             onClick={() =>
-              void installChatNestUpdate()
+              void installFyFladeUpdate()
             }
             style={{
               ...smallButton,
@@ -44282,7 +44283,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                       </div>
                       <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 7 }}>
                         <button
-                          onClick={exportChatNestBackup}
+                          onClick={exportFyFladeBackup}
                           style={{
                             ...smallButton,
                             background: theme.accent,
@@ -44323,7 +44324,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                               event.target.files?.[0];
 
                             if (file) {
-                              void importChatNestBackup(
+                              void importFyFladeBackup(
                                 file
                               );
                             }
@@ -44374,7 +44375,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                         <button
                           disabled={appUpdateStatus === "checking" || appUpdateStatus === "downloading" || appUpdateStatus === "installing"}
                           onClick={() =>
-                            void checkForChatNestUpdate(
+                            void checkForFyFladeUpdate(
                               true
                             )
                           }
@@ -44390,7 +44391,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                         {appUpdateStatus === "available" && (
                           <button
                             onClick={() =>
-                              void installChatNestUpdate()
+                              void installFyFladeUpdate()
                             }
                             style={{
                               ...smallButton,

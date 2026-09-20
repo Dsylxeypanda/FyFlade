@@ -40,7 +40,7 @@ secrets.
 
 1. Build releases only on a trusted, fully updated Windows PC.
 2. Keep the updater private key backed up offline and never upload it.
-3. Build with `scripts/build-chatnest-release.ps1`; do not bypass updater
+3. Build with `scripts/build-fyflade-release.ps1`; do not bypass updater
    signing.
 4. Verify the generated updater signature before publishing the release URL.
 5. Store Cloudflare values with `npx wrangler secret put`.

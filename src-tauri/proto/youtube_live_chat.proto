@@ -4,7 +4,7 @@ package youtube.api.v3;
 
 // Minimal protobuf contract for YouTube liveChatMessages.streamList.
 // Field numbers match Google's official stream_list.proto.
-// We only define the fields ChatNest currently needs.
+// We only define the fields FyFlade currently needs.
 // Unknown fields sent by YouTube are safely ignored by protobuf.
 
 service V3DataLiveChatMessageService {

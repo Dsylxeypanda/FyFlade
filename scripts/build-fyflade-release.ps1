@@ -7,10 +7,11 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $signingDirectory = Join-Path $projectRoot "src-tauri\.signing"
+# Keep the legacy key filename so an existing release key remains usable.
 $privateKeyPath = Join-Path $signingDirectory "chatnest-updater-secure.key"
 $publicKeyPath = "$privateKeyPath.pub"
 
-function Read-ChatNestSigningPassword([string]$prompt) {
+function Read-FyFladeSigningPassword([string]$prompt) {
   $securePassword = Read-Host -Prompt $prompt -AsSecureString
   $passwordPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
 
@@ -29,8 +30,8 @@ if ($InitializeSigning) {
   }
 
   New-Item -ItemType Directory -Path $signingDirectory -Force | Out-Null
-  $signingPassword = Read-ChatNestSigningPassword "Choose a password for the FyFlade updater key"
-  $confirmation = Read-ChatNestSigningPassword "Type the same password again"
+  $signingPassword = Read-FyFladeSigningPassword "Choose a password for the FyFlade updater key"
+  $confirmation = Read-FyFladeSigningPassword "Type the same password again"
 
   if ($signingPassword.Length -lt 12) {
     throw "The updater signing password must contain at least 12 characters."
@@ -69,7 +70,7 @@ if ($SkipBuild) {
   exit 0
 }
 
-$releasePassword = Read-ChatNestSigningPassword "Updater signing password"
+$releasePassword = Read-FyFladeSigningPassword "Updater signing password"
 $previousCargoHome = $env:CARGO_HOME
 $previousCargoOffline = $env:CARGO_NET_OFFLINE
 

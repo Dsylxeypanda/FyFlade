@@ -1,12 +1,12 @@
-# ChatNest - add YouTube streamList/gRPC dependencies to src-tauri/Cargo.toml
-# Run this from the ChatNest project root:
+# FyFlade - add YouTube streamList/gRPC dependencies to src-tauri/Cargo.toml
+# Run this from the FyFlade project root:
 #   powershell -ExecutionPolicy Bypass -File .\PATCH_CARGO_YOUTUBE_STREAM.ps1
 
 $ErrorActionPreference = "Stop"
 
 $cargoPath = Join-Path $PSScriptRoot "src-tauri\Cargo.toml"
 if (-not (Test-Path $cargoPath)) {
-    throw "Fant ikke src-tauri\Cargo.toml. Legg scriptet i ChatNest-hovedmappen og kjør det derfra."
+    throw "Fant ikke src-tauri\Cargo.toml. Legg scriptet i FyFlade-hovedmappen og kjør det derfra."
 }
 
 $backupPath = "$cargoPath.backup-before-youtube-stream"

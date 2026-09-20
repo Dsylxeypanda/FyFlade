@@ -563,28 +563,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "chatnest"
-version = "1.0.0"
-dependencies = [
- "keyring",
- "prost",
- "protoc-bin-vendored",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-http",
- "tauri-plugin-opener",
- "tauri-plugin-process",
- "tauri-plugin-updater",
- "tonic",
- "tonic-prost",
- "tonic-prost-build",
- "webview2-com",
- "windows",
-]
-
-[[package]]
 name = "chrono"
 version = "0.4.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1373,6 +1351,28 @@ dependencies = [
  "memchr",
  "pin-project-lite",
  "slab",
+]
+
+[[package]]
+name = "fyflade"
+version = "1.0.0"
+dependencies = [
+ "keyring",
+ "prost",
+ "protoc-bin-vendored",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-http",
+ "tauri-plugin-opener",
+ "tauri-plugin-process",
+ "tauri-plugin-updater",
+ "tonic",
+ "tonic-prost",
+ "tonic-prost-build",
+ "webview2-com",
+ "windows",
 ]
 
 [[package]]

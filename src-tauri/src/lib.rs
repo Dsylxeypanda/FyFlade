@@ -32,7 +32,10 @@ use windows::core::PWSTR;
 // TWITCH LOGIN
 // ---------------------------------------------------------
 
-const CHATNEST_SERVICE: &str = "ChatNest";
+// Keep the legacy Credential Manager service name until credentials have been
+// copied and verified under a new FyFlade service name. Changing it directly
+// would make existing refresh tokens appear missing and log users out.
+const LEGACY_CREDENTIAL_SERVICE: &str = "ChatNest";
 const TWITCH_REFRESH_TOKEN_ACCOUNT: &str = "twitch_refresh_token";
 const YOUTUBE_REFRESH_TOKEN_ACCOUNT: &str = "youtube_refresh_token";
 const YOUTUBE_CLIENT_SECRET_ACCOUNT: &str = "youtube_client_secret";
@@ -173,7 +176,7 @@ const CHAT_HISTORY_MAX_AGE_MS: u64 =
 
 fn twitch_token_entry() -> Result<Entry, String> {
     Entry::new(
-        CHATNEST_SERVICE,
+        LEGACY_CREDENTIAL_SERVICE,
         TWITCH_REFRESH_TOKEN_ACCOUNT,
     )
     .map_err(|error| error.to_string())
@@ -217,7 +220,7 @@ fn delete_twitch_refresh_token(
 
 fn youtube_token_entry() -> Result<Entry, String> {
     Entry::new(
-        CHATNEST_SERVICE,
+        LEGACY_CREDENTIAL_SERVICE,
         YOUTUBE_REFRESH_TOKEN_ACCOUNT,
     )
     .map_err(|error| error.to_string())
@@ -225,7 +228,7 @@ fn youtube_token_entry() -> Result<Entry, String> {
 
 fn youtube_client_secret_entry() -> Result<Entry, String> {
     Entry::new(
-        CHATNEST_SERVICE,
+        LEGACY_CREDENTIAL_SERVICE,
         YOUTUBE_CLIENT_SECRET_ACCOUNT,
     )
     .map_err(|error| error.to_string())
@@ -300,7 +303,7 @@ fn delete_youtube_client_secret(
 
 fn kick_refresh_token_entry() -> Result<Entry, String> {
     Entry::new(
-        CHATNEST_SERVICE,
+        LEGACY_CREDENTIAL_SERVICE,
         KICK_REFRESH_TOKEN_ACCOUNT,
     )
     .map_err(|error| error.to_string())
@@ -308,7 +311,7 @@ fn kick_refresh_token_entry() -> Result<Entry, String> {
 
 fn kick_client_secret_entry() -> Result<Entry, String> {
     Entry::new(
-        CHATNEST_SERVICE,
+        LEGACY_CREDENTIAL_SERVICE,
         KICK_CLIENT_SECRET_ACCOUNT,
     )
     .map_err(|error| error.to_string())
@@ -3086,7 +3089,7 @@ fn greet(
 }
 
 // ---------------------------------------------------------
-// START CHATNEST
+// START FYFLADE
 // ---------------------------------------------------------
 
 #[cfg_attr(
