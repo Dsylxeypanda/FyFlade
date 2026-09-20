@@ -70,6 +70,23 @@ if ($SkipBuild) {
   exit 0
 }
 
+$youtubeClientId = $env:VITE_YOUTUBE_OAUTH_CLIENT_ID
+$productionEnvironmentPath = Join-Path $projectRoot ".env.production.local"
+
+if ([string]::IsNullOrWhiteSpace($youtubeClientId) -and (Test-Path -LiteralPath $productionEnvironmentPath)) {
+  $youtubeClientIdLine = Get-Content -LiteralPath $productionEnvironmentPath |
+    Where-Object { $_ -match '^\s*VITE_YOUTUBE_OAUTH_CLIENT_ID\s*=' } |
+    Select-Object -Last 1
+
+  if ($youtubeClientIdLine) {
+    $youtubeClientId = ($youtubeClientIdLine -split '=', 2)[1].Trim().Trim('"').Trim("'")
+  }
+}
+
+if ($youtubeClientId -notmatch '^[0-9A-Za-z._-]+\.apps\.googleusercontent\.com$') {
+  throw "The official FyFlade YouTube OAuth Client ID is missing. Copy .env.example to .env.production.local and set VITE_YOUTUBE_OAUTH_CLIENT_ID before creating a public release."
+}
+
 $releasePassword = Read-FyFladeSigningPassword "Updater signing password"
 $previousCargoHome = $env:CARGO_HOME
 $previousCargoOffline = $env:CARGO_NET_OFFLINE

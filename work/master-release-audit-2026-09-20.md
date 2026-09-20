@@ -2,7 +2,27 @@
 
 ## Scope
 
-This is the initial, non-destructive audit requested by the FyFlade master plan. No product code, identifiers, storage keys, OAuth configuration, or user data were changed during this phase.
+This began as the non-destructive audit requested by the FyFlade master plan and is now the living release-hardening record. Phase 1 is complete and Phase 2 is in progress.
+
+## Implementation progress
+
+### Phase 1 complete
+
+- A local Git baseline and separate Phase 1 commit provide rollback points.
+- User-visible and build-time product branding now uses FyFlade while compatibility-critical storage, credentials, app identity, relay, and updater identifiers remain unchanged.
+- npm, Rust crate/binary, logo asset, backup metadata, and release-script names were updated safely.
+- TypeScript/Vite, Rust tests, Worker typecheck, and a native no-bundle release build passed.
+
+### Phase 2 in progress
+
+- Public builds now read one official FyFlade Google Desktop OAuth Client ID from `VITE_YOUTUBE_OAUTH_CLIENT_ID`; end users no longer need their own Google Cloud project.
+- Desktop OAuth keeps the browser + loopback listener + state + PKCE flow. Google documents `client_secret` as optional for installed apps, so FyFlade supports but does not require it.
+- Existing local per-user OAuth configuration remains available only in development builds as a compatibility fallback. It is ignored by public production builds.
+- Public release builds now fail safely when the official FyFlade Client ID has not been configured in `.env.production.local` or the release environment.
+- The user-facing account controls no longer open the old Google Cloud setup guide. They expose a single Log in action when the official integration is present.
+- YouTube live discovery now has per-channel in-memory caching, in-flight request deduplication, and adaptive offline backoff from 10 to 60 minutes. A one-minute scheduler only performs calls for channels whose next check is due.
+- The local YouTube diagnostics now record request count, error count, rate-limit responses, last error, and per-endpoint call counts in addition to estimated units.
+- Remaining release blocker: the dedicated FyFlade Google OAuth project/client must be configured for production and submitted for Google verification before broad public distribution.
 
 ## Current architecture
 
@@ -12,7 +32,7 @@ This is the initial, non-destructive audit requested by the FyFlade master plan.
 - Main frontend: most application behavior and UI still lives in `src/App.tsx` (about 1.2 MB / roughly 49,000 lines).
 - Native backend: most native behavior still lives in `src-tauri/src/lib.rs` (about 86 KB / roughly 3,100 lines).
 - Extracted feature modules already exist for channel settings, commands, highlights, inbox, layout/docking, OBS, onboarding, profiles, reliability, global search, settings help/search, undo, and local user tools.
-- This directory is not currently a Git repository. That makes broad refactors and rollback riskier than necessary.
+- This directory now has a local Git history with explicit baseline and Phase 1 checkpoints.
 
 ## Baseline verification
 
@@ -51,7 +71,7 @@ Recommended migration pattern: read old and new keys, write the new key, verify,
 
 ### OAuth and quota ownership
 
-The current release still uses the old per-user setup. Each user supplies a Google Desktop OAuth Client ID and Client Secret. The Client ID is stored locally; the Client Secret and refresh token are stored through Windows Credential Manager. Therefore, with the current design, each user uses the Google Cloud project belonging to the OAuth credentials they entered, and does not automatically share the developer's 10,000-unit project quota.
+Development builds can still read the old per-user Client ID and optional Client Secret as a compatibility fallback. Public production builds use the official FyFlade Google Desktop OAuth Client ID supplied at build time and ignore legacy per-user client configuration. Refresh tokens remain local in Windows Credential Manager.
 
 The master plan changes this to one official FyFlade integration. Under that design every user still signs into their own YouTube account and grants access only to that account, but YouTube Data API quota is charged to the shared FyFlade Google Cloud project. The login identity is personal; the API project/quota pool is shared. Public release will require the FyFlade OAuth consent screen and requested YouTube scope to be prepared for production/verification.
 
@@ -68,10 +88,10 @@ The master plan changes this to one official FyFlade integration. Under that des
 
 ### Why quota can rise
 
-- Every connected app immediately checks all saved standalone and linked YouTube channels that are not already marked live.
-- The same scan repeats every 10 minutes while YouTube is connected.
+- Every connected app immediately checks saved standalone and linked YouTube channels that are not already marked live.
+- A lightweight scheduler runs once per minute, but each offline channel has an independent next-check time and backs off from 10 to 60 minutes.
 - Each offline channel normally causes two list requests: `playlistItems.list` and `videos.list`.
-- The scan is sequential, but it has no per-channel next-check cache, adaptive offline backoff, visibility/interest priority, or shared result cache across app instances/users.
+- The scan is sequential and now has a per-channel next-check cache, in-flight deduplication, and adaptive offline backoff. Visibility/interest priority and cross-device/server-side result sharing are not implemented.
 - A 401 retry performs the same Data API request again after token refresh.
 - Adding or resolving a channel adds more channel/video/list calls.
 - The local quota counter records generic list calls as one unit and action calls as hard-coded values. It is an estimate, not authoritative Google quota reporting.
@@ -86,8 +106,8 @@ The master plan changes this to one official FyFlade integration. Under that des
 
 ### Observability gaps
 
-- Only total estimated units, last action, day, and an exhausted flag are stored.
-- There is no per-endpoint call count, timestamp history, latency, error count, retry count, reconnect count, or rate-limit event log.
+- Total estimated units, request count, error count, rate-limit count, last action/error, and per-endpoint counts are stored locally per day.
+- Timestamp history, latency, retry count, reconnect count, and a bounded event log are still missing.
 - The UI currently reports estimated quota as though it were a daily tracker, even though it only measures calls made by this app instance and cannot see other users of a future shared project.
 - `streamList` emits a locally assumed cost on each connection. Costs must be verified against current official documentation before public reporting; unknown values should be displayed as `Unknown / Not reported`.
 

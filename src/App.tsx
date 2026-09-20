@@ -362,6 +362,12 @@ const YOUTUBE_OAUTH_CLIENT_ID_KEY =
 const YOUTUBE_OAUTH_CLIENT_SECRET_KEY =
   "chatnest.youtube.oauthClientSecret.v1";
 
+const FYFLADE_YOUTUBE_OAUTH_CLIENT_ID =
+  String(import.meta.env.VITE_YOUTUBE_OAUTH_CLIENT_ID || "").trim();
+
+const FYFLADE_YOUTUBE_OAUTH_CLIENT_SECRET =
+  String(import.meta.env.VITE_YOUTUBE_OAUTH_CLIENT_SECRET || "").trim();
+
 const YOUTUBE_PROFILE_CACHE_KEY =
   "chatnest.youtube.profileCache.v1";
 
@@ -380,8 +386,17 @@ const YOUTUBE_QUOTA_TRACKER_KEY =
 const YOUTUBE_DAILY_QUOTA_DEFAULT =
   10000;
 
-const YOUTUBE_LIVE_CHECK_INTERVAL_MS =
+const YOUTUBE_LIVE_CHECK_SCHEDULER_MS =
+  60 * 1000;
+
+const YOUTUBE_LIVE_CHECK_OFFLINE_BASE_MS =
   10 * 60 * 1000;
+
+const YOUTUBE_LIVE_CHECK_OFFLINE_MAX_MS =
+  60 * 60 * 1000;
+
+const YOUTUBE_LIVE_CHECK_ERROR_RETRY_MS =
+  5 * 60 * 1000;
 
 const YOUTUBE_OAUTH_SCOPE =
   "https://www.googleapis.com/auth/youtube.force-ssl";
@@ -1013,9 +1028,26 @@ type KickSubscriptionHealth = {
 type YouTubeQuotaTracker = {
   dayKey: string;
   usedUnits: number;
+  requestCount: number;
+  errorCount: number;
+  rateLimitCount: number;
+  endpointCalls: Record<string, number>;
   exhausted: boolean;
   lastAction: string;
+  lastError: string;
   updatedAt: number;
+};
+
+type YouTubeLiveDiscoveryResult = {
+  videoId: string;
+  liveChatId: string;
+} | null;
+
+type YouTubeLiveDiscoveryCacheEntry = {
+  live: YouTubeLiveDiscoveryResult;
+  checkedAt: number;
+  nextCheckAt: number;
+  offlineStreak: number;
 };
 
 function youtubeQuotaPacificDayKey(
@@ -1061,9 +1093,19 @@ function emptyYouTubeQuotaTracker():
       youtubeQuotaPacificDayKey(),
     usedUnits:
       0,
+    requestCount:
+      0,
+    errorCount:
+      0,
+    rateLimitCount:
+      0,
+    endpointCalls:
+      {},
     exhausted:
       false,
     lastAction:
+      "",
+    lastError:
       "",
     updatedAt:
       Date.now(),
@@ -1108,6 +1150,16 @@ function readYouTubeQuotaTracker():
             0
           )
         ),
+      requestCount:
+        Math.max(0, Number(parsed.requestCount || 0)),
+      errorCount:
+        Math.max(0, Number(parsed.errorCount || 0)),
+      rateLimitCount:
+        Math.max(0, Number(parsed.rateLimitCount || 0)),
+      endpointCalls:
+        parsed.endpointCalls && typeof parsed.endpointCalls === "object"
+          ? parsed.endpointCalls
+          : {},
       exhausted:
         parsed.exhausted ===
         true,
@@ -1115,6 +1167,10 @@ function readYouTubeQuotaTracker():
         typeof parsed.lastAction ===
         "string"
           ? parsed.lastAction
+          : "",
+      lastError:
+        typeof parsed.lastError === "string"
+          ? parsed.lastError
           : "",
       updatedAt:
         Number(
@@ -2920,11 +2976,19 @@ async function deleteStoredBackgroundImage() {
 }
 
 function readYouTubeOAuthClientId() {
-  return (
-    localStorage.getItem(
-      YOUTUBE_OAUTH_CLIENT_ID_KEY
-    ) || ""
-  ).trim();
+  if (FYFLADE_YOUTUBE_OAUTH_CLIENT_ID) {
+    return FYFLADE_YOUTUBE_OAUTH_CLIENT_ID;
+  }
+
+  // Development-only compatibility for existing local test installs. Public
+  // builds must use FyFlade's shared OAuth client configured at build time.
+  return import.meta.env.DEV
+    ? (
+        localStorage.getItem(
+          YOUTUBE_OAUTH_CLIENT_ID_KEY
+        ) || ""
+      ).trim()
+    : "";
 }
 
 function isValidYouTubeOAuthClientId(
@@ -6173,8 +6237,7 @@ function App() {
   const youtubeOAuthConfigured =
     isValidYouTubeOAuthClientId(
       youtubeOAuthClientId
-    ) &&
-    youtubeOAuthClientSecret.trim().length > 0;
+    );
 
   const [
     youtubeSetupError,
@@ -6865,6 +6928,16 @@ function App() {
       LinkedYouTubeChannel[]
     >(
       readLinkedYouTubeChannels()
+    );
+
+  const youtubeLiveDiscoveryCacheRef =
+    useRef(
+      new Map<string, YouTubeLiveDiscoveryCacheEntry>()
+    );
+
+  const youtubeLiveDiscoveryInFlightRef =
+    useRef(
+      new Map<string, Promise<YouTubeLiveDiscoveryResult>>()
     );
 
   const savedKickChannelsRef =
@@ -10233,7 +10306,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
           () => {
             void refreshSavedYouTubeLiveStatuses();
           },
-          YOUTUBE_LIVE_CHECK_INTERVAL_MS
+          YOUTUBE_LIVE_CHECK_SCHEDULER_MS
         );
 
       return () =>
@@ -17381,6 +17454,18 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
   }
 
   async function loadYouTubeClientSecret() {
+    if (FYFLADE_YOUTUBE_OAUTH_CLIENT_SECRET) {
+      setYoutubeOAuthClientSecret(
+        FYFLADE_YOUTUBE_OAUTH_CLIENT_SECRET
+      );
+      return FYFLADE_YOUTUBE_OAUTH_CLIENT_SECRET;
+    }
+
+    if (!import.meta.env.DEV) {
+      setYoutubeOAuthClientSecret("");
+      return "";
+    }
+
     let secret =
       (await invoke<string | null>(
         "load_youtube_client_secret"
@@ -17627,6 +17712,13 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
           usedUnits:
             normalized.usedUnits +
             safeUnits,
+          requestCount:
+            normalized.requestCount + 1,
+          endpointCalls: {
+            ...normalized.endpointCalls,
+            [action]:
+              (normalized.endpointCalls[action] || 0) + 1,
+          },
           lastAction:
             action,
           updatedAt:
@@ -17685,10 +17777,32 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     response: Response,
     action: string
   ) {
-    if (
-      response.status !==
-      403
-    ) {
+    if (response.ok) {
+      return;
+    }
+
+    const isRateLimited =
+      response.status === 403 || response.status === 429;
+
+    setYoutubeQuotaTracker((current) => {
+      const normalized = normalizeYouTubeQuotaDay(current);
+      const next: YouTubeQuotaTracker = {
+        ...normalized,
+        errorCount: normalized.errorCount + 1,
+        rateLimitCount:
+          normalized.rateLimitCount + (isRateLimited ? 1 : 0),
+        lastError: `${action} · HTTP ${response.status}`,
+        updatedAt: Date.now(),
+      };
+
+      localStorage.setItem(
+        YOUTUBE_QUOTA_TRACKER_KEY,
+        JSON.stringify(next)
+      );
+      return next;
+    });
+
+    if (response.status !== 403) {
       return;
     }
 
@@ -17920,9 +18034,6 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
         client_id:
           youtubeOAuthClientId,
 
-        client_secret:
-          youtubeOAuthClientSecret,
-
         code,
 
         code_verifier:
@@ -17934,6 +18045,13 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
         redirect_uri:
           redirectUri,
       });
+
+    if (youtubeOAuthClientSecret) {
+      body.set(
+        "client_secret",
+        youtubeOAuthClientSecret
+      );
+    }
 
     const response =
       await fetch(
@@ -18093,11 +18211,13 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     if (
       !youtubeOAuthConfigured
     ) {
-      openYouTubeSetup();
-
-      setYoutubeSetupError(
-        ui("Lagre både Google Desktop OAuth Client ID og Client Secret først.", "Save both the Google Desktop OAuth Client ID and Client Secret first.")
+      const message = ui(
+        "Denne FyFlade-versjonen mangler den offisielle YouTube-innloggingen. Installer en offentlig utgivelse eller konfigurer VITE_YOUTUBE_OAUTH_CLIENT_ID når appen bygges.",
+        "This FyFlade build is missing the official YouTube sign-in. Install a public release or configure VITE_YOUTUBE_OAUTH_CLIENT_ID when building the app."
       );
+
+      setYoutubeLoginError(message);
+      setAccountNotice(message);
 
       return;
     }
@@ -18324,8 +18444,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     if (
       !isValidYouTubeOAuthClientId(
         clientId
-      ) ||
-      !clientSecret
+      )
     ) {
       return;
     }
@@ -18360,15 +18479,19 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
           client_id:
             clientId,
 
-          client_secret:
-            clientSecret,
-
           refresh_token:
             refreshToken,
 
           grant_type:
             "refresh_token",
         });
+
+      if (clientSecret) {
+        body.set(
+          "client_secret",
+          clientSecret
+        );
+      }
 
       const response =
         await fetch(
@@ -18826,6 +18949,16 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
   async function youtubeApiRequest(
     url: string
   ) {
+    const endpoint = (() => {
+      try {
+        const resource =
+          new URL(url).pathname.split("/").filter(Boolean).pop() || "list";
+        return `${resource}.list`;
+      } catch {
+        return "YouTube Data API · list";
+      }
+    })();
+
     let accessToken =
       youtubeAccessTokenRef.current;
 
@@ -18843,7 +18976,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       ) => {
         recordYouTubeQuotaUnits(
           1,
-          "YouTube Data API · list"
+          endpoint
         );
 
         const response =
@@ -18859,7 +18992,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
         void inspectYouTubeQuotaResponse(
           response,
-          "YouTube Data API · list"
+          endpoint
         );
 
         return response;
@@ -19028,13 +19161,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     channel:
       SavedYouTubeChannel
   ):
-    Promise<
-      {
-        videoId: string;
-        liveChatId: string;
-      } |
-      null
-    > {
+    Promise<YouTubeLiveDiscoveryResult> {
     const playlistParams =
       new URLSearchParams({
         part:
@@ -19150,6 +19277,84 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
         liveVideo.liveStreamingDetails
           .activeLiveChatId,
     };
+  }
+
+  async function findActiveYouTubeLiveCached(
+    channel: SavedYouTubeChannel
+  ): Promise<YouTubeLiveDiscoveryResult> {
+    const cacheKey =
+      channel.channelId || channel.uploadsPlaylistId;
+    const now = Date.now();
+    const cached =
+      youtubeLiveDiscoveryCacheRef.current.get(cacheKey);
+
+    if (cached && now < cached.nextCheckAt) {
+      return cached.live;
+    }
+
+    const inFlight =
+      youtubeLiveDiscoveryInFlightRef.current.get(cacheKey);
+
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const request =
+      findActiveYouTubeLive(channel)
+        .then((live) => {
+          const previousOfflineStreak =
+            cached?.offlineStreak || 0;
+          const offlineStreak = live
+            ? 0
+            : Math.min(previousOfflineStreak + 1, 6);
+          const offlineDelay = Math.min(
+            YOUTUBE_LIVE_CHECK_OFFLINE_MAX_MS,
+            YOUTUBE_LIVE_CHECK_OFFLINE_BASE_MS *
+              Math.max(1, 2 ** Math.max(0, offlineStreak - 1))
+          );
+
+          youtubeLiveDiscoveryCacheRef.current.set(cacheKey, {
+            live,
+            checkedAt: Date.now(),
+            nextCheckAt:
+              Date.now() +
+              (live
+                ? YOUTUBE_LIVE_CHECK_SCHEDULER_MS
+                : offlineDelay),
+            offlineStreak,
+          });
+
+          return live;
+        })
+        .catch((error) => {
+          youtubeLiveDiscoveryCacheRef.current.set(cacheKey, {
+            live: cached?.live || null,
+            checkedAt: Date.now(),
+            nextCheckAt:
+              Date.now() + YOUTUBE_LIVE_CHECK_ERROR_RETRY_MS,
+            offlineStreak: cached?.offlineStreak || 0,
+          });
+          throw error;
+        })
+        .finally(() => {
+          youtubeLiveDiscoveryInFlightRef.current.delete(cacheKey);
+        });
+
+    youtubeLiveDiscoveryInFlightRef.current.set(cacheKey, request);
+    return request;
+  }
+
+  function isYouTubeLiveDiscoveryDeferred(
+    channel: SavedYouTubeChannel
+  ) {
+    const cacheKey =
+      channel.channelId || channel.uploadsPlaylistId;
+    const cached =
+      youtubeLiveDiscoveryCacheRef.current.get(cacheKey);
+
+    return Boolean(
+      cached && Date.now() < cached.nextCheckAt
+    );
   }
 
   async function resolveYouTubeChannelInput(
@@ -19325,9 +19530,13 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
         continue;
       }
 
+      if (isYouTubeLiveDiscoveryDeferred(channel)) {
+        continue;
+      }
+
       try {
         const live =
-          await findActiveYouTubeLive(
+          await findActiveYouTubeLiveCached(
             channel
           );
 
@@ -19442,9 +19651,13 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
         continue;
       }
 
+      if (isYouTubeLiveDiscoveryDeferred(linked)) {
+        continue;
+      }
+
       try {
         const live =
-          await findActiveYouTubeLive(
+          await findActiveYouTubeLiveCached(
             linked
           );
 
@@ -19537,7 +19750,6 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
     if (
       !clientId ||
-      !clientSecret ||
       !refreshToken
     ) {
       throw new Error(
@@ -19550,15 +19762,19 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
         client_id:
           clientId,
 
-        client_secret:
-          clientSecret,
-
         refresh_token:
           refreshToken,
 
         grant_type:
           "refresh_token",
       });
+
+    if (clientSecret) {
+      body.set(
+        "client_secret",
+        clientSecret
+      );
+    }
 
     const response =
       await fetch(
@@ -39020,6 +39236,52 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
       <div
         style={{
+          marginTop: 10,
+          display: "grid",
+          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+          gap: 7,
+        }}
+      >
+        {[
+          [ui("API-kall", "API calls"), youtubeQuotaNormalized.requestCount],
+          [ui("Feil", "Errors"), youtubeQuotaNormalized.errorCount],
+          [ui("Begrensninger", "Rate limits"), youtubeQuotaNormalized.rateLimitCount],
+        ].map(([label, value]) => (
+          <div
+            key={String(label)}
+            style={{
+              padding: "8px 9px",
+              border: `1px solid ${theme.border}`,
+              borderRadius: 5,
+              background: theme.panelRaised,
+            }}
+          >
+            <div style={{ color: theme.subtle, fontSize: 9 }}>{label}</div>
+            <div style={{ marginTop: 2, color: theme.text, fontSize: 14, fontWeight: 850 }}>
+              {Number(value).toLocaleString()}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {Object.keys(youtubeQuotaNormalized.endpointCalls).length > 0 && (
+        <div style={{ marginTop: 9, color: theme.subtle, fontSize: 9, lineHeight: "15px" }}>
+          {Object.entries(youtubeQuotaNormalized.endpointCalls)
+            .sort((left, right) => right[1] - left[1])
+            .slice(0, 4)
+            .map(([endpoint, calls]) => `${endpoint}: ${calls}`)
+            .join(" · ")}
+        </div>
+      )}
+
+      {youtubeQuotaNormalized.lastError && (
+        <div style={{ marginTop: 7, color: "#ff8d86", fontSize: 9 }}>
+          {ui("Siste feil", "Last error")}: {youtubeQuotaNormalized.lastError}
+        </div>
+      )}
+
+      <div
+        style={{
           marginTop:
             12,
           paddingTop:
@@ -39612,15 +39874,6 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
   }
 
   async function connectYouTubeFromFirstRun() {
-    if (!youtubeOAuthConfigured) {
-      setResumeFirstRunAfterYoutubeSetup(
-        true
-      );
-      setFirstRunStage(null);
-      openYouTubeSetup();
-      return;
-    }
-
     setFirstRunStage(null);
     await connectYouTube();
     setFirstRunStage("accounts");
@@ -44586,8 +44839,8 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                                 : connectionErrorNeedsSignIn(youtubeLoginError)
                                   ? ui("Logg inn på nytt", "Sign in again")
                                 : youtubeOAuthConfigured
-                                  ? ui("OAuth konfigurert · klar til innlogging", "OAuth configured · ready to log in")
-                                  : ui("OAuth-oppsett kreves", "OAuth setup required")}
+                                  ? ui("Klar til innlogging", "Ready to log in")
+                                  : ui("YouTube er ikke konfigurert i denne versjonen", "YouTube is not configured in this build")}
                           </div>
                           {youtubeLoginError && (
                             <div style={{ color: "#ff8d86", fontSize: 9, marginTop: 3, lineHeight: "14px" }}>{youtubeLoginError}</div>
@@ -44596,19 +44849,15 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
                         {youtubeConnected ? (
                           <>
-                            <button disabled={connectingYoutube} onClick={openYouTubeSetup} style={{ ...smallButton, border: "1px solid #ff0033", color: "#ff6b75", fontWeight: 700 }}>{ui("Guide", "Guide")}</button>
                             <button onClick={() => void openYouTubeChannel()} style={smallButton}>{ui("Åpne", "Open")} ↗</button>
                             <button disabled={connectingYoutube} onClick={() => void disconnectYouTube()} style={{ ...smallButton, color: "#ff827a", border: "1px solid #6c3438" }}>{ui("Fjern", "Remove")}</button>
                           </>
                         ) : youtubeOAuthConfigured ? (
-                          <>
-                            <button disabled={connectingYoutube} onClick={() => void connectYouTube()} style={{ ...smallButton, background: "#ff0033", border: "1px solid #ff0033", color: "white", fontWeight: 700 }}>
-                              {connectingYoutube ? ui("Kobler til...", "Connecting...") : ui("Logg inn", "Log in")}
-                            </button>
-                            <button disabled={connectingYoutube} onClick={openYouTubeSetup} style={smallButton}>{ui("Guide / rediger", "Guide / edit")}</button>
-                          </>
+                          <button disabled={connectingYoutube} onClick={() => void connectYouTube()} style={{ ...smallButton, background: "#ff0033", border: "1px solid #ff0033", color: "white", fontWeight: 700 }}>
+                            {connectingYoutube ? ui("Kobler til...", "Connecting...") : ui("Logg inn", "Log in")}
+                          </button>
                         ) : (
-                          <button onClick={openYouTubeSetup} style={{ ...smallButton, background: "#ff0033", border: "1px solid #ff0033", color: "white", fontWeight: 800 }}>{ui("Start guide", "Start guide")}</button>
+                          <button disabled style={{ ...smallButton, opacity: .55 }}>{ui("Ikke tilgjengelig", "Unavailable")}</button>
                         )}
                       </div>
                     </div>
@@ -44709,19 +44958,18 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                         </div>
                       </div>
 
-                      <button
-                        onClick={openYouTubeSetup}
+                      <span
                         style={{
-                          ...smallButton,
                           marginLeft: "auto",
-                          background: "#ff0033",
-                          border: "1px solid #ff0033",
-                          color: "white",
-                          fontWeight: 800,
+                          color: youtubeOAuthConfigured ? "#64d98a" : theme.subtle,
+                          fontSize: 10,
+                          fontWeight: 700,
                         }}
                       >
-                        {ui("Vis steg-for-steg-guide", "Show step-by-step guide")}
-                      </button>
+                        {youtubeOAuthConfigured
+                          ? ui("FyFlade-innlogging klar", "FyFlade sign-in ready")
+                          : ui("Ikke konfigurert i denne versjonen", "Not configured in this build")}
+                      </span>
                     </div>
 
                     <div
@@ -47213,16 +47461,12 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                       </span>
                     </button>
                     <button
-                      disabled={youtubeConnected || connectingYoutube}
+                      disabled={youtubeConnected || connectingYoutube || !youtubeOAuthConfigured}
                       onClick={() => {
-                        if (youtubeOAuthConfigured) {
-                          setShowAddAccount(false);
-                          void connectYouTube();
-                        } else {
-                          openYouTubeSetup();
-                        }
+                        setShowAddAccount(false);
+                        void connectYouTube();
                       }}
-                      style={{ height: 48, display: "flex", alignItems: "center", gap: 10, padding: "0 12px", border: `1px solid ${theme.borderStrong}`, borderRadius: 5, background: theme.input, color: theme.text, cursor: youtubeConnected ? "default" : "pointer", opacity: youtubeConnected ? .55 : 1, fontFamily: "inherit", textAlign: "left" }}
+                      style={{ height: 48, display: "flex", alignItems: "center", gap: 10, padding: "0 12px", border: `1px solid ${theme.borderStrong}`, borderRadius: 5, background: theme.input, color: theme.text, cursor: youtubeConnected || !youtubeOAuthConfigured ? "default" : "pointer", opacity: youtubeConnected || !youtubeOAuthConfigured ? .55 : 1, fontFamily: "inherit", textAlign: "left" }}
                     >
                       <span style={{ width: 18, height: 18, borderRadius: 3, display: "grid", placeItems: "center", background: "#ff0033", color: "white" }}><YouTubeIcon size={12} /></span>
                       <span>
@@ -47234,7 +47478,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                               ? ui("Venter på Google...", "Waiting for Google...")
                               : youtubeOAuthConfigured
                                 ? ui("Logg inn (åpnes i nettleseren)", "Log in (opens in browser)")
-                                : ui("Konfigurer Google Desktop OAuth", "Set up Google Desktop OAuth")}
+                                : ui("Ikke konfigurert i denne versjonen", "Not configured in this build")}
                         </div>
                       </span>
                     </button>
@@ -47463,7 +47707,9 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
             </div>
           )}
 
-          {showYoutubeSetup && (
+          {/* Legacy per-user Google Cloud guide is intentionally excluded from
+              the product UI. Public builds use FyFlade's shared OAuth client. */}
+          {false && showYoutubeSetup && (
             <div
               onClick={closeYouTubeSetupAndResumeOnboarding}
               style={{
