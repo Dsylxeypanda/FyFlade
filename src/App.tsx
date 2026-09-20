@@ -514,6 +514,8 @@ type AppUpdateStatus =
   | "installing"
   | "error";
 
+type DistributionMode = "unknown" | "installed" | "portable";
+
 function readableErrorMessage(
   error: unknown,
   fallback: string
@@ -5678,6 +5680,9 @@ function App() {
         ) !== "false"
     );
 
+  const [distributionMode, setDistributionMode] =
+    useState<DistributionMode>("unknown");
+
   const [
     appUpdateStatus,
     setAppUpdateStatus,
@@ -9064,7 +9069,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
   useEffect(
     () => {
-      if (!autoUpdateEnabled) {
+      if (!autoUpdateEnabled || distributionMode !== "installed") {
         return;
       }
 
@@ -9099,8 +9104,15 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     },
     [
       autoUpdateEnabled,
+      distributionMode,
     ]
   );
+
+  useEffect(() => {
+    void invoke<string>("get_distribution_mode")
+      .then((mode) => setDistributionMode(mode === "portable" ? "portable" : "installed"))
+      .catch(() => setDistributionMode("installed"));
+  }, []);
 
   useEffect(
     () =>
@@ -11531,6 +11543,16 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
   async function checkForFyFladeUpdate(
     manual: boolean
   ) {
+    if (distributionMode === "portable") {
+      setUpdateError(
+        ui(
+          "Portable-utgaven oppdateres ved å laste ned og pakke ut en ny portable-versjon.",
+          "Update the portable edition by downloading and extracting a new portable version."
+        )
+      );
+      setAppUpdateStatus("error");
+      return;
+    }
     if (
       updateOperationRef.current
     ) {
@@ -11626,6 +11648,16 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
   }
 
   async function installFyFladeUpdate() {
+    if (distributionMode === "portable") {
+      setUpdateError(
+        ui(
+          "Installer-oppdatering er deaktivert i portable-utgaven.",
+          "Installer updates are disabled in the portable edition."
+        )
+      );
+      setAppUpdateStatus("error");
+      return;
+    }
     if (
       updateOperationRef.current
     ) {
@@ -11734,6 +11766,13 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
   }
 
   function appUpdateStatusText() {
+    if (distributionMode === "portable") {
+      return ui(
+        "Portable-utgaven oppdateres ved å laste ned en ny portable-pakke. Innstillingene og innloggingene dine blir liggende på PC-en.",
+        "The portable edition is updated by downloading a new portable package. Your settings and sign-ins remain on this PC."
+      );
+    }
+
     switch (
       appUpdateStatus
     ) {
@@ -45339,17 +45378,32 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                     </div>
 
                     <div style={{ marginTop: 10, padding: 12, border: `1px solid ${theme.border}`, borderRadius: 6, background: theme.panel }}>
-                      <strong style={{ fontSize: 12 }}>{ui("Oppdateringer", "Updates")}</strong>
-                      <div style={{ marginTop: 5, color: theme.muted, fontSize: 10, lineHeight: "16px" }}>
-                        {ui(
-                          "FyFlade kan finne nye, signerte versjoner automatisk. Du bestemmer når installasjonen skal starte, siden appen må lukkes og åpnes igjen.",
-                          "FyFlade can automatically find new, signed versions. You choose when installation starts because the app must close and reopen."
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <strong style={{ fontSize: 12 }}>{ui("Oppdateringer", "Updates")}</strong>
+                        {distributionMode !== "unknown" && (
+                          <span style={{ padding: "2px 6px", border: `1px solid ${theme.border}`, borderRadius: 999, color: theme.subtle, fontSize: 8.5 }}>
+                            {distributionMode === "portable"
+                              ? ui("Portable-utgave", "Portable edition")
+                              : ui("Installert utgave", "Installed edition")}
+                          </span>
                         )}
                       </div>
-                      <label style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8, color: theme.text, fontSize: 10.5, cursor: "pointer" }}>
+                      <div style={{ marginTop: 5, color: theme.muted, fontSize: 10, lineHeight: "16px" }}>
+                        {distributionMode === "portable"
+                          ? ui(
+                              "Portable-utgaven installerer ikke oppdateringer. Last ned en ny portable-pakke når en ny versjon publiseres.",
+                              "The portable edition does not install updates. Download a new portable package when a new version is published."
+                            )
+                          : ui(
+                              "FyFlade kan finne nye, signerte versjoner automatisk. Du bestemmer når installasjonen skal starte, siden appen må lukkes og åpnes igjen.",
+                              "FyFlade can automatically find new, signed versions. You choose when installation starts because the app must close and reopen."
+                            )}
+                      </div>
+                      <label style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8, color: theme.text, fontSize: 10.5, cursor: distributionMode === "portable" ? "default" : "pointer", opacity: distributionMode === "portable" ? 0.62 : 1 }}>
                         <input
                           type="checkbox"
-                          checked={autoUpdateEnabled}
+                          checked={distributionMode === "installed" && autoUpdateEnabled}
+                          disabled={distributionMode === "portable"}
                           onChange={(event) => {
                             const enabled =
                               event.target.checked;
@@ -45372,7 +45426,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                       </label>
                       <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 7 }}>
                         <button
-                          disabled={appUpdateStatus === "checking" || appUpdateStatus === "downloading" || appUpdateStatus === "installing"}
+                          disabled={distributionMode === "portable" || appUpdateStatus === "checking" || appUpdateStatus === "downloading" || appUpdateStatus === "installing"}
                           onClick={() =>
                             void checkForFyFladeUpdate(
                               true
@@ -45380,7 +45434,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                           }
                           style={{
                             ...smallButton,
-                            opacity: appUpdateStatus === "checking" || appUpdateStatus === "downloading" || appUpdateStatus === "installing" ? 0.55 : 1,
+                            opacity: distributionMode === "portable" || appUpdateStatus === "checking" || appUpdateStatus === "downloading" || appUpdateStatus === "installing" ? 0.55 : 1,
                           }}
                         >
                           {appUpdateStatus === "checking"

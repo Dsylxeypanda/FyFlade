@@ -3168,6 +3168,50 @@ fn greet(
     )
 }
 
+#[tauri::command]
+fn get_distribution_mode() -> String {
+    std::env::current_exe()
+        .ok()
+        .map(|path| distribution_mode_for_executable(&path))
+        .unwrap_or("installed")
+        .to_string()
+}
+
+fn distribution_mode_for_executable(executable: &Path) -> &'static str {
+    if executable
+        .parent()
+        .map(|parent| parent.join("FyFlade-portable.marker").is_file())
+        .unwrap_or(false)
+    {
+        "portable"
+    } else {
+        "installed"
+    }
+}
+
+#[cfg(test)]
+mod distribution_mode_tests {
+    use super::distribution_mode_for_executable;
+    use std::fs;
+
+    #[test]
+    fn marker_switches_the_application_to_portable_mode() {
+        let test_directory = std::env::temp_dir().join(format!(
+            "fyflade-distribution-test-{}",
+            std::process::id()
+        ));
+        let executable = test_directory.join("FyFlade.exe");
+        fs::create_dir_all(&test_directory).expect("create test directory");
+
+        assert_eq!(distribution_mode_for_executable(&executable), "installed");
+        fs::write(test_directory.join("FyFlade-portable.marker"), "test")
+            .expect("write marker");
+        assert_eq!(distribution_mode_for_executable(&executable), "portable");
+
+        fs::remove_dir_all(test_directory).expect("remove test directory");
+    }
+}
+
 // ---------------------------------------------------------
 // START FYFLADE
 // ---------------------------------------------------------
@@ -3193,6 +3237,7 @@ pub fn run() {
         .invoke_handler(
             tauri::generate_handler![
                 greet,
+                get_distribution_mode,
                 save_twitch_refresh_token,
                 load_twitch_refresh_token,
                 delete_twitch_refresh_token,
