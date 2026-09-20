@@ -17,7 +17,7 @@ export function ProfilesPanel({ store, no, colors, onSwitch, onCreate, onRename,
   };
   return <section aria-label={t("Profiler", "Profiles")} style={{ maxWidth: 720, padding: 16, boxSizing: "border-box", fontSize: 12 }}>
     <h2>{t("Profiler", "Profiles")}</h2>
-    <p>{t("Bytt visning uten å endre kontoer, kanaler eller meldinger. Endringer i skriftstørrelse, fanestørrelse, faneplassering og åpen/lukket innboks huskes i aktiv profil.", "Change your view without changing accounts, channels or messages. Font size, tab size, tab position and open/closed Inbox changes are remembered in the active profile.")}</p>
+    <p>{t("Bytt visning uten å endre kontoer, kanaler eller meldinger. Endringer lagres automatisk i aktiv profil, inkludert skriftstørrelse, faner, innboks og lagret layout.", "Change your view without changing accounts, channels or messages. Changes are saved automatically to the active profile, including font size, tabs, Inbox, and saved layout.")}</p>
     <label>{t("Aktiv profil", "Active profile")} <select aria-label={t("Aktiv profil", "Active profile")} value={store.activeId} onChange={e => onSwitch(e.target.value)} style={{ ...button, maxWidth: "100%" }}>
       {store.profiles.map(p => <option key={p.id} value={p.id}>{profileName(p, no)}</option>)}
     </select></label>

@@ -53,6 +53,13 @@ This began as the non-destructive audit requested by the FyFlade master plan and
 - Text-to-speech and hover reading are disabled by default. FyFlade uses the browser/Windows speech interface and does not send spoken chat text to the developer.
 - TTS preferences are synchronized with detached Settings windows and included in safe settings backup files; chat text is not stored by TTS.
 
+### Phase 6 in progress
+
+- Profile create, automatic save, duplicate, rename, delete, reset, and fallback behavior were verified in the existing profile store. The UI now states clearly that changes are saved automatically to the active profile.
+- Saved layouts remain validated, profile-scoped, limited in depth/pane count, and preserve all three chat platforms plus the required Channels pane.
+- The detached Settings window now remembers its last physical size and position. On reopen, the geometry is fitted to currently connected monitor bounds so a removed secondary monitor cannot leave Settings inaccessible off-screen.
+- Detached Settings continues to use storage-event synchronization for profiles, TTS, appearance, navigation order, warnings, history retention, highlights, and other existing shared settings.
+
 ## Current architecture
 
 - Desktop application: React 19 + TypeScript + Vite, hosted in Tauri 2.

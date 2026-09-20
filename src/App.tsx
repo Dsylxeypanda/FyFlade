@@ -12,6 +12,11 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+import {
+  PhysicalPosition,
+  PhysicalSize,
+  availableMonitors,
+} from "@tauri-apps/api/window";
 import { fetch } from "@tauri-apps/plugin-http";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { relaunch } from "@tauri-apps/plugin-process";
@@ -80,6 +85,11 @@ import { useProfiles } from "./features/profiles/useProfiles";
 import { ProfilesPanel } from "./features/profiles/ProfilesPanel";
 import { DockWorkspace } from "./features/layout/DockWorkspace";
 import { defaultLayout, showInbox, type WorkspaceLayout, type Pane as LayoutPane } from "./features/layout/layout";
+import {
+  fitGeometryToMonitors,
+  readSettingsWindowGeometry,
+  writeSettingsWindowGeometry,
+} from "./features/layout/detachedWindowGeometry";
 import { profileName, PROFILES_KEY } from "./features/profiles/profiles";
 import {
   FirstRunSetup,
@@ -7446,6 +7456,46 @@ function App() {
         hoverTtsTimerRef.current = null;
       }
       stopTts();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (FYFLATE_WINDOW_MODE !== "settings") return;
+    const currentWindow = WebviewWindow.getCurrent();
+    let saveTimer: number | null = null;
+    let stopped = false;
+    const saveGeometry = () => {
+      if (saveTimer !== null) window.clearTimeout(saveTimer);
+      saveTimer = window.setTimeout(() => {
+        saveTimer = null;
+        void Promise.all([
+          currentWindow.outerPosition(),
+          currentWindow.outerSize(),
+        ]).then(([position, size]) => {
+          if (stopped) return;
+          writeSettingsWindowGeometry({
+            version: 1,
+            x: position.x,
+            y: position.y,
+            width: size.width,
+            height: size.height,
+          });
+        }).catch(() => undefined);
+      }, 180);
+    };
+    let unlistenMoved: (() => void) | undefined;
+    let unlistenResized: (() => void) | undefined;
+    void currentWindow.onMoved(saveGeometry).then((unlisten) => {
+      if (stopped) unlisten(); else unlistenMoved = unlisten;
+    });
+    void currentWindow.onResized(saveGeometry).then((unlisten) => {
+      if (stopped) unlisten(); else unlistenResized = unlisten;
+    });
+    return () => {
+      stopped = true;
+      if (saveTimer !== null) window.clearTimeout(saveTimer);
+      unlistenMoved?.();
+      unlistenResized?.();
     };
   }, []);
 
@@ -36057,6 +36107,30 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
             event.payload
           )
       );
+
+      if (isSettings) {
+        void detached.once("tauri://created", () => {
+          const saved = readSettingsWindowGeometry();
+          if (!saved) return;
+          void availableMonitors()
+            .then((monitors) => {
+              const fitted = fitGeometryToMonitors(
+                saved,
+                monitors.map((monitor) => ({
+                  x: monitor.position.x,
+                  y: monitor.position.y,
+                  width: monitor.size.width,
+                  height: monitor.size.height,
+                }))
+              );
+              return Promise.all([
+                detached.setSize(new PhysicalSize(fitted.width, fitted.height)),
+                detached.setPosition(new PhysicalPosition(fitted.x, fitted.y)),
+              ]);
+            })
+            .catch(() => undefined);
+        });
+      }
     }
 
     if (isSettings) {
