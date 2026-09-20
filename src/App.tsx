@@ -6252,11 +6252,6 @@ function App() {
   );
 
   const [
-    resumeFirstRunAfterYoutubeSetup,
-    setResumeFirstRunAfterYoutubeSetup,
-  ] = useState(false);
-
-  const [
     undoNotice,
     setUndoNotice,
   ] = useState<UndoNotice | null>(null);
@@ -6310,22 +6305,8 @@ function App() {
   );
 
   const [
-    showYoutubeSetup,
-    setShowYoutubeSetup,
-  ] =
-    useState(false);
-
-  const [
     youtubeOAuthClientId,
     setYoutubeOAuthClientId,
-  ] =
-    useState(
-      readYouTubeOAuthClientId
-    );
-
-  const [
-    youtubeOAuthClientIdDraft,
-    setYoutubeOAuthClientIdDraft,
   ] =
     useState(
       readYouTubeOAuthClientId
@@ -6337,22 +6318,10 @@ function App() {
   ] =
     useState("");
 
-  const [
-    youtubeOAuthClientSecretDraft,
-    setYoutubeOAuthClientSecretDraft,
-  ] =
-    useState("");
-
   const youtubeOAuthConfigured =
     isValidYouTubeOAuthClientId(
       youtubeOAuthClientId
     );
-
-  const [
-    youtubeSetupError,
-    setYoutubeSetupError,
-  ] =
-    useState("");
 
   const [
     youtubeConnected,
@@ -17970,158 +17939,6 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     return secret;
   }
 
-  function openYouTubeSetup() {
-    setShowAddAccount(
-      false
-    );
-
-    setAccountNotice(
-      ""
-    );
-
-    setYoutubeSetupError(
-      ""
-    );
-
-    setYoutubeOAuthClientIdDraft(
-      youtubeOAuthClientId
-    );
-
-    setYoutubeOAuthClientSecretDraft(
-      ""
-    );
-
-    setShowYoutubeSetup(
-      true
-    );
-  }
-
-  async function saveYouTubeOAuthSetup() {
-    const value =
-      youtubeOAuthClientIdDraft.trim();
-
-    const secret =
-      youtubeOAuthClientSecretDraft.trim() ||
-      youtubeOAuthClientSecret;
-
-    if (
-      !isValidYouTubeOAuthClientId(
-        value
-      )
-    ) {
-      setYoutubeSetupError(
-        ui(
-          "Dette ser ikke ut som en Google Desktop OAuth Client ID. Den skal normalt ende på .apps.googleusercontent.com.",
-          "This does not look like a Google Desktop OAuth Client ID. It should normally end in .apps.googleusercontent.com."
-        )
-      );
-
-      return;
-    }
-
-    if (
-      !secret
-    ) {
-      setYoutubeSetupError(
-        ui(
-          "Legg inn Client Secret fra den samme Google Desktop OAuth-klienten.",
-          "Enter the Client Secret from the same Google Desktop OAuth client."
-        )
-      );
-
-      return;
-    }
-
-    localStorage.setItem(
-      YOUTUBE_OAUTH_CLIENT_ID_KEY,
-      value
-    );
-
-    try {
-      await invoke(
-        "save_youtube_client_secret",
-        {
-          clientSecret:
-            secret,
-        }
-      );
-      localStorage.removeItem(
-        YOUTUBE_OAUTH_CLIENT_SECRET_KEY
-      );
-    } catch {
-      setYoutubeSetupError(
-        ui(
-          "Kunne ikke lagre Client Secret sikkert i Windows Credential Manager.",
-          "Could not securely save the Client Secret in Windows Credential Manager."
-        )
-      );
-      return;
-    }
-
-    setYoutubeOAuthClientId(
-      value
-    );
-
-    setYoutubeOAuthClientSecret(
-      secret
-    );
-
-    setYoutubeOAuthClientSecretDraft(
-      ""
-    );
-
-    setYoutubeSetupError(
-      ""
-    );
-
-    closeYouTubeSetupAndResumeOnboarding();
-
-    setAccountNotice(
-      ui(
-        "✓ YouTube-oppsettet er lagret. Trykk Logg inn på YouTube-kortet.",
-        "✓ YouTube setup is saved. Click Log in on the YouTube card."
-      )
-    );
-  }
-
-  async function removeYouTubeOAuthSetup() {
-    localStorage.removeItem(
-      YOUTUBE_OAUTH_CLIENT_ID_KEY
-    );
-
-    localStorage.removeItem(
-      YOUTUBE_OAUTH_CLIENT_SECRET_KEY
-    );
-
-    await invoke(
-      "delete_youtube_client_secret"
-    ).catch(() => undefined);
-
-    setYoutubeOAuthClientId(
-      ""
-    );
-
-    setYoutubeOAuthClientIdDraft(
-      ""
-    );
-
-    setYoutubeOAuthClientSecret(
-      ""
-    );
-
-    setYoutubeOAuthClientSecretDraft(
-      ""
-    );
-
-    setYoutubeSetupError(
-      ""
-    );
-
-    setAccountNotice(
-      ui("YouTube OAuth-oppsettet er fjernet.", "YouTube OAuth setup was removed.")
-    );
-  }
-
   function saveYouTubeQuotaTracker(
     tracker:
       YouTubeQuotaTracker
@@ -18328,34 +18145,6 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
         error
       );
     }
-  }
-
-  async function openGoogleCloudSetupPage(
-    url: string
-  ) {
-    try {
-      await openUrl(url);
-    } catch (
-      error
-    ) {
-      console.error(
-        "Kunne ikke åpne Google Cloud Console:",
-        error
-      );
-
-      setYoutubeSetupError(
-        ui(
-          "Kunne ikke åpne nettleseren.",
-          "Could not open the browser."
-        )
-      );
-    }
-  }
-
-  async function openGoogleCloudCredentials() {
-    await openGoogleCloudSetupPage(
-      "https://console.cloud.google.com/auth/clients"
-    );
   }
 
   async function saveYouTubeRefreshToken(
@@ -18675,9 +18464,6 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       false
     );
 
-    setShowYoutubeSetup(
-      false
-    );
   }
 
   async function connectYouTube() {
@@ -36281,9 +36067,6 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     setShowAddAccount(
       false
     );
-    setShowYoutubeSetup(
-      false
-    );
     setShowKickSetup(
       false
     );
@@ -40477,19 +40260,6 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     setFirstRunStage("accounts");
   }
 
-  function closeYouTubeSetupAndResumeOnboarding() {
-    setShowYoutubeSetup(false);
-
-    if (
-      resumeFirstRunAfterYoutubeSetup
-    ) {
-      setResumeFirstRunAfterYoutubeSetup(
-        false
-      );
-      setFirstRunStage("accounts");
-    }
-  }
-
   function closeWhatsNewPanel() {
     markVersionSeen(
       FYFLADE_VERSION
@@ -40514,7 +40284,6 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
       setShowAddChannel(false);
       setShowAddAccount(false);
-      setShowYoutubeSetup(false);
       setShowKickSetup(false);
       setUserCard(null);
       setProfileMenuOpen(false);
@@ -44788,7 +44557,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                         setDraggedSettingsSection(null);
                       }}
                       onDragEnd={() => setDraggedSettingsSection(null)}
-                      onClick={() => { setSettingsSection(id); setSettingsSearchQuery(""); setShowAddAccount(false); setShowYoutubeSetup(false); setShowKickSetup(false); setAccountNotice(""); }}
+                      onClick={() => { setSettingsSection(id); setSettingsSearchQuery(""); setShowAddAccount(false); setShowKickSetup(false); setAccountNotice(""); }}
                       style={{ width: "100%", minHeight: 34, flexShrink: 0, display: "flex", alignItems: "center", gap: 7, padding: "0 7px", border: "none", borderRadius: 4, background: active ? (appearanceMode === "light" ? "#e6e8ec" : "#292b31") : draggedSettingsSection === id ? hexColorWithAlpha(theme.accent, .12) : "transparent", color: active ? theme.text : theme.muted, cursor: draggedSettingsSection ? "grabbing" : "grab", textAlign: "left", fontFamily: "inherit", fontSize: 11, opacity: draggedSettingsSection === id ? .6 : 1 }}
                     >
                       <span aria-hidden="true" style={{ width: 9, color: theme.subtle, fontSize: 9 }}>⋮⋮</span>
@@ -48784,240 +48553,6 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
             </div>
           )}
 
-          {/* Legacy per-user Google Cloud guide is intentionally excluded from
-              the product UI. Public builds use FyFlade's shared OAuth client. */}
-          {false && showYoutubeSetup && (
-            <div
-              onClick={closeYouTubeSetupAndResumeOnboarding}
-              style={{
-                position: "fixed",
-                inset: 0,
-                zIndex: 32500,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "rgba(0,0,0,.42)",
-                padding: 14,
-              }}
-            >
-              <div
-                onClick={(event) => event.stopPropagation()}
-                style={{
-                  width: 520,
-                  maxWidth: "calc(100vw - 28px)",
-                  maxHeight: "calc(100vh - 28px)",
-                  overflowY: "auto",
-                  background: theme.panelRaised,
-                  border: `1px solid ${theme.borderStrong}`,
-                  borderRadius: 8,
-                  boxShadow: theme.shadow,
-                }}
-              >
-                <div style={{ height: 46, display: "flex", alignItems: "center", gap: 10, padding: "0 13px", background: theme.panel, borderBottom: `1px solid ${theme.border}` }}>
-                  <div style={{ width: 24, height: 24, borderRadius: 5, display: "grid", placeItems: "center", background: "#ff0033", color: "white" }}><YouTubeIcon size={16} /></div>
-                  <div>
-                    <strong style={{ fontSize: 13 }}>{ui("Koble YouTube til FyFlade", "Connect YouTube to FyFlade")}</strong>
-                    <div style={{ color: theme.subtle, fontSize: 9, marginTop: 1 }}>{ui("Enkel veiledning · ditt eget Google Cloud-prosjekt", "Simple guide · your own Google Cloud project")}</div>
-                  </div>
-                  <button onClick={closeYouTubeSetupAndResumeOnboarding} style={{ marginLeft: "auto", border: "none", background: "transparent", color: theme.subtle, cursor: "pointer", fontSize: 20 }}>×</button>
-                </div>
-
-                <div style={{ padding: 14 }}>
-                  <div style={{ padding: 11, border: `1px solid ${theme.border}`, borderRadius: 6, background: theme.panel, color: theme.muted, fontSize: 11, lineHeight: "18px" }}>
-                    <strong style={{ color: theme.text }}>{ui("Før du starter:", "Before you start:")}</strong>{" "}
-                    {ui(
-                      "Du trenger bare en vanlig Google-konto. Oppsettet er gratis, og betalingskort er ikke nødvendig. Hver bruker lager sitt eget prosjekt og får sin egen YouTube-kvote.",
-                      "You only need a regular Google account. Setup is free and no payment card is required. Each user creates their own project and gets their own YouTube quota."
-                    )}
-                  </div>
-
-                  <div style={{ marginTop: 12, padding: 12, border: `1px solid ${theme.border}`, borderRadius: 7, background: theme.panel }}>
-                    <div style={{ fontSize: 12, fontWeight: 800 }}>{ui("Steg 1 – Opprett et Google Cloud-prosjekt", "Step 1 – Create a Google Cloud project")}</div>
-                    <div style={{ marginTop: 5, color: theme.muted, fontSize: 11, lineHeight: "18px" }}>
-                      {ui(
-                        "Trykk på knappen, logg inn med Google-kontoen som har YouTube-kanalen, skriv FyFlade som prosjektnavn og trykk Opprett. Pass på at FyFlade-prosjektet er valgt øverst på Google-siden.",
-                        "Open the page, sign in with the Google account that has the YouTube channel, enter FyFlade as the project name and click Create. Make sure the FyFlade project is selected at the top of the Google page."
-                      )}
-                    </div>
-                    <button onClick={() => void openGoogleCloudSetupPage("https://console.cloud.google.com/projectcreate")} style={{ ...smallButton, marginTop: 8, background: theme.input, border: `1px solid ${theme.borderStrong}`, color: theme.text }}>
-                      {ui("Åpne Opprett prosjekt", "Open Create project")} ↗
-                    </button>
-                  </div>
-
-                  <div style={{ marginTop: 9, padding: 12, border: `1px solid ${theme.border}`, borderRadius: 7, background: theme.panel }}>
-                    <div style={{ fontSize: 12, fontWeight: 800 }}>{ui("Steg 2 – Slå på YouTube Data API", "Step 2 – Enable YouTube Data API")}</div>
-                    <div style={{ marginTop: 5, color: theme.muted, fontSize: 11, lineHeight: "18px" }}>
-                      {ui(
-                        "Trykk på knappen under. Kontroller at FyFlade-prosjektet er valgt, og trykk Aktiver (Enable) på YouTube Data API v3.",
-                        "Open the page below. Check that the FyFlade project is selected, then click Enable on YouTube Data API v3."
-                      )}
-                    </div>
-                    <button onClick={() => void openGoogleCloudSetupPage("https://console.cloud.google.com/apis/library/youtube.googleapis.com")} style={{ ...smallButton, marginTop: 8, background: theme.input, border: `1px solid ${theme.borderStrong}`, color: theme.text }}>
-                      {ui("Åpne YouTube Data API v3", "Open YouTube Data API v3")} ↗
-                    </button>
-                  </div>
-
-                  <div style={{ marginTop: 9, padding: 12, border: `1px solid ${theme.border}`, borderRadius: 7, background: theme.panel }}>
-                    <div style={{ fontSize: 12, fontWeight: 800 }}>{ui("Steg 3 – Sett opp Google-innlogging", "Step 3 – Set up Google sign-in")}</div>
-                    <div style={{ marginTop: 5, color: theme.muted, fontSize: 11, lineHeight: "18px" }}>
-                      {ui(
-                        "Trykk Get started. Bruk FyFlade som appnavn, velg e-postadressen din som support-e-post, velg External, skriv inn e-postadressen din under Contact information, godta reglene og trykk Create.",
-                        "Click Get started. Use FyFlade as the app name, choose your email as the support email, select External, enter your email under Contact information, accept the policy and click Create."
-                      )}
-                    </div>
-                    <button onClick={() => void openGoogleCloudSetupPage("https://console.cloud.google.com/auth/overview")} style={{ ...smallButton, marginTop: 8, background: theme.input, border: `1px solid ${theme.borderStrong}`, color: theme.text }}>
-                      {ui("Åpne Google Auth Platform", "Open Google Auth Platform")} ↗
-                    </button>
-                  </div>
-
-                  <div style={{ marginTop: 9, padding: 12, border: `1px solid ${theme.border}`, borderRadius: 7, background: theme.panel }}>
-                    <div style={{ fontSize: 12, fontWeight: 800 }}>{ui("Steg 4 – Legg til deg selv som testbruker", "Step 4 – Add yourself as a test user")}</div>
-                    <div style={{ marginTop: 5, color: theme.muted, fontSize: 11, lineHeight: "18px" }}>
-                      {ui(
-                        "Åpne Audience, finn Test users og trykk Add users. Legg inn den samme Google-e-posten som du skal logge inn med i FyFlade, og trykk Save.",
-                        "Open Audience, find Test users and click Add users. Enter the same Google email you will use to sign in to FyFlade, then click Save."
-                      )}
-                    </div>
-                    <button onClick={() => void openGoogleCloudSetupPage("https://console.cloud.google.com/auth/audience")} style={{ ...smallButton, marginTop: 8, background: theme.input, border: `1px solid ${theme.borderStrong}`, color: theme.text }}>
-                      {ui("Åpne Audience og testbrukere", "Open Audience and test users")} ↗
-                    </button>
-                  </div>
-
-                  <div style={{ marginTop: 9, padding: 12, border: `1px solid ${theme.border}`, borderRadius: 7, background: theme.panel }}>
-                    <div style={{ fontSize: 12, fontWeight: 800 }}>{ui("Steg 5 – Velg YouTube-tilgang", "Step 5 – Select YouTube access")}</div>
-                    <div style={{ marginTop: 5, color: theme.muted, fontSize: 11, lineHeight: "18px" }}>
-                      {ui(
-                        "Åpne Data Access og trykk Add or remove scopes. Finn YouTube Data API v3, velg tillatelsen som slutter på youtube.force-ssl, trykk Update og deretter Save.",
-                        "Open Data Access and click Add or remove scopes. Find YouTube Data API v3, select the permission ending in youtube.force-ssl, click Update and then Save."
-                      )}
-                    </div>
-                    <button onClick={() => void openGoogleCloudSetupPage("https://console.cloud.google.com/auth/scopes")} style={{ ...smallButton, marginTop: 8, background: theme.input, border: `1px solid ${theme.borderStrong}`, color: theme.text }}>
-                      {ui("Åpne Data Access", "Open Data Access")} ↗
-                    </button>
-                  </div>
-
-                  <div style={{ marginTop: 9, padding: 12, border: `1px solid ${theme.border}`, borderRadius: 7, background: theme.panel }}>
-                    <div style={{ fontSize: 12, fontWeight: 800 }}>{ui("Steg 6 – Opprett en Desktop app", "Step 6 – Create a Desktop app")}</div>
-                    <div style={{ marginTop: 5, color: theme.muted, fontSize: 11, lineHeight: "18px" }}>
-                      {ui(
-                        "Åpne Clients, trykk Create client, velg Desktop app, skriv FyFlade Desktop som navn og trykk Create. Du skal ikke legge inn noen redirect-adresse.",
-                        "Open Clients, click Create client, select Desktop app, enter FyFlade Desktop as the name and click Create. Do not add a redirect address."
-                      )}
-                    </div>
-                    <button onClick={() => void openGoogleCloudCredentials()} style={{ ...smallButton, marginTop: 8, background: theme.input, border: `1px solid ${theme.borderStrong}`, color: theme.text }}>
-                      {ui("Åpne Clients", "Open Clients")} ↗
-                    </button>
-                  </div>
-
-                  <div style={{ marginTop: 16, fontSize: 12, fontWeight: 800 }}>{ui("Steg 7 – Lim inn Client ID", "Step 7 – Paste the Client ID")}</div>
-                  <div style={{ marginTop: 5, color: theme.muted, fontSize: 10, lineHeight: "16px" }}>
-                    {ui("Kopier Client ID fra FyFlade Desktop-vinduet i Google og lim den inn her.", "Copy the Client ID from the FyFlade Desktop window in Google and paste it here.")}
-                  </div>
-
-                  <input
-                    value={youtubeOAuthClientIdDraft}
-                    onChange={(event) => {
-                      setYoutubeOAuthClientIdDraft(event.target.value);
-                      setYoutubeSetupError("");
-                    }}
-                    placeholder="1234567890-abc123.apps.googleusercontent.com"
-                    spellCheck={false}
-                    style={{
-                      width: "100%",
-                      height: 36,
-                      boxSizing: "border-box",
-                      marginTop: 7,
-                      background: theme.input,
-                      color: theme.text,
-                      border: `1px solid ${youtubeSetupError ? "#a64b52" : theme.borderStrong}`,
-                      borderRadius: 5,
-                      padding: "0 10px",
-                      outline: "none",
-                      fontFamily: "monospace",
-                      fontSize: 11,
-                    }}
-                  />
-
-                  <div style={{ marginTop: 14, fontSize: 12, fontWeight: 800 }}>{ui("Steg 8 – Lim inn Client Secret", "Step 8 – Paste the Client Secret")}</div>
-                  <div style={{ marginTop: 5, color: theme.muted, fontSize: 10, lineHeight: "16px" }}>
-                    {ui(
-                      youtubeOAuthClientSecret
-                        ? "Et Client Secret er allerede lagret sikkert i Windows Credential Manager. La feltet stå tomt for å beholde det, eller lim inn et nytt for å erstatte det."
-                        : "Kopier Client Secret fra det samme Google-vinduet. Det lagres i Windows Credential Manager og sendes ikke til FyFlade-utvikleren.",
-                      youtubeOAuthClientSecret
-                        ? "A Client Secret is already stored securely in Windows Credential Manager. Leave this field empty to keep it, or paste a new one to replace it."
-                        : "Copy the Client Secret from the same Google window. It is stored in Windows Credential Manager and is not sent to the FyFlade developer."
-                    )}
-                  </div>
-
-                  <input
-                    type="password"
-                    value={youtubeOAuthClientSecretDraft}
-                    onChange={(event) => {
-                      setYoutubeOAuthClientSecretDraft(event.target.value);
-                      setYoutubeSetupError("");
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        saveYouTubeOAuthSetup();
-                      }
-                    }}
-                    placeholder={youtubeOAuthClientSecret ? ui("Lagret sikkert · la stå tomt for å beholde", "Saved securely · leave blank to keep") : "Google Desktop OAuth Client Secret"}
-                    spellCheck={false}
-                    autoComplete="off"
-                    style={{
-                      width: "100%",
-                      height: 36,
-                      boxSizing: "border-box",
-                      marginTop: 7,
-                      background: theme.input,
-                      color: theme.text,
-                      border: `1px solid ${youtubeSetupError ? "#a64b52" : theme.borderStrong}`,
-                      borderRadius: 5,
-                      padding: "0 10px",
-                      outline: "none",
-                      fontFamily: "monospace",
-                      fontSize: 11,
-                    }}
-                  />
-
-                  {youtubeSetupError && (
-                    <div style={{ marginTop: 7, color: "#ff8d86", fontSize: 10, lineHeight: "16px" }}>{youtubeSetupError}</div>
-                  )}
-
-                  <div style={{ marginTop: 15, fontSize: 12, fontWeight: 800 }}>{ui("Steg 9 – Lagre og logg inn", "Step 9 – Save and sign in")}</div>
-                  <div style={{ marginTop: 14, padding: "9px 10px", borderLeft: "3px solid #ff0033", background: appearanceMode === "light" ? "#fff5f5" : "#24191b", color: theme.muted, fontSize: 10, lineHeight: "16px" }}>
-                    {ui(
-                      "Trykk Lagre oppsett. Når vinduet lukkes, trykker du Logg inn på YouTube-kortet. Google åpnes i nettleseren. Hvis Google viser en advarsel om at appen testes, fortsetter du bare dersom dette er prosjektet du nettopp opprettet selv.",
-                      "Click Save setup. When this window closes, click Log in on the YouTube card. Google opens in your browser. If Google shows a warning that the app is being tested, only continue if this is the project you just created yourself."
-                    )}
-                  </div>
-
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 7, marginTop: 14 }}>
-                    <button onClick={closeYouTubeSetupAndResumeOnboarding} style={smallButton}>{ui("Avbryt", "Cancel")}</button>
-                    {youtubeOAuthConfigured && !youtubeConnected && (
-                      <button
-                        disabled={connectingYoutube}
-                        onClick={() => {
-                          setShowYoutubeSetup(false);
-                          void connectYouTube();
-                        }}
-                        style={{ ...smallButton, background: "#ff0033", border: "1px solid #ff0033", color: "white", fontWeight: 700 }}
-                      >
-                        {connectingYoutube ? ui("Kobler til...", "Connecting...") : ui("Logg inn med YouTube", "Log in with YouTube")}
-                      </button>
-                    )}
-                    <button
-                      onClick={saveYouTubeOAuthSetup}
-                      style={{ ...smallButton, background: "#ff0033", border: "1px solid #ff0033", color: "white", fontWeight: 800 }}
-                    >
-                      {ui("Lagre oppsett", "Save setup")}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 

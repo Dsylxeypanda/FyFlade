@@ -14,4 +14,4 @@ Run `npm run tauri dev` from this directory. Production installers must use the 
 - Portable edition: build with `scripts/build-fyflade-portable.ps1`. It runs without installation and deliberately uses manual ZIP updates.
 - Both public editions require a valid Windows Authenticode signature. Development-only unsigned portable packages must never be published.
 
-See `PORTABLE.md` for portable behavior and `docs/RELEASE_TEST_CHECKLIST.md` for the release gate.
+See `PORTABLE.md` for portable behavior, `docs/RELEASE_TEST_CHECKLIST.md` for the release gate, and `docs/RELEASE_READINESS_REPORT.md` for the current verified status and remaining blockers.
