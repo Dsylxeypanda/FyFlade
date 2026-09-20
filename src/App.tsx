@@ -57,6 +57,13 @@ import {
   type SettingsSectionId,
 } from "./features/settings/settingsSearch";
 import { HelpTip } from "./features/settings/HelpTip";
+import {
+  DEFAULT_SETTINGS_NAV_ORDER,
+  moveSettingsSection,
+  readSettingsNavOrder,
+  SETTINGS_NAV_ORDER_KEY,
+  writeSettingsNavOrder,
+} from "./features/settings/settingsNavigation";
 import { UndoToast } from "./features/undo/UndoToast";
 import { useProfiles } from "./features/profiles/useProfiles";
 import { ProfilesPanel } from "./features/profiles/ProfilesPanel";
@@ -110,6 +117,13 @@ import {
 } from "./features/channels/channelSettings";
 import { ConnectionHealthButton } from "./features/reliability/ConnectionHealthButton";
 import { DiagnosticsPanel } from "./features/reliability/DiagnosticsPanel";
+import { PlatformApiStatusCard } from "./features/reliability/PlatformApiStatusCard";
+import { DismissibleStatusBanner } from "./features/reliability/DismissibleStatusBanner";
+import {
+  DISMISSED_WARNINGS_KEY,
+  readDismissedWarnings,
+  writeDismissedWarnings,
+} from "./features/reliability/warningPreferences";
 import {
   beginReliabilitySession,
   connectionErrorNeedsSignIn,
@@ -6101,6 +6115,18 @@ function App() {
     );
 
   const [
+    settingsNavOrder,
+    setSettingsNavOrder,
+  ] = useState<SettingsSectionId[]>(
+    readSettingsNavOrder
+  );
+
+  const [
+    draggedSettingsSection,
+    setDraggedSettingsSection,
+  ] = useState<SettingsSectionId | null>(null);
+
+  const [
     settingsSearchQuery,
     setSettingsSearchQuery,
   ] = useState("");
@@ -6198,6 +6224,13 @@ function App() {
     setAnonymousUsageEnabled,
   ] = useState(() =>
     readBooleanSetting(ANONYMOUS_USAGE_ENABLED_KEY, false)
+  );
+
+  const [
+    dismissedWarnings,
+    setDismissedWarnings,
+  ] = useState<string[]>(
+    readDismissedWarnings
   );
 
   const [
@@ -8314,6 +8347,24 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       },
     ];
 
+  const settingsNavMeta: Record<SettingsSectionId, { icon: string; label: string }> = {
+    general: { icon: "⌂", label: ui("Generelt", "General") },
+    profiles: { icon: "▧", label: ui("Profiler", "Profiles") },
+    accounts: { icon: "♙", label: ui("Kontoer", "Accounts") },
+    usage: { icon: "◴", label: ui("Kvote og API-bruk", "Quota & API Usage") },
+    obs: { icon: "◈", label: ui("OBS / stream", "OBS / Stream") },
+    youtube: { icon: "▶", label: "YouTube" },
+    kick: { icon: "K", label: "Kick" },
+    emotes: { icon: "☺", label: ui("Emoter", "Emotes") },
+    chat: { icon: "▤", label: ui("Chat", "Chat") },
+    tabs: { icon: "▥", label: ui("Kanalfaner", "Channel Tabs") },
+    highlights: { icon: "✦", label: ui("Markeringer", "Highlights") },
+    ignores: { icon: "⊘", label: ui("Ignorerte", "Ignores") },
+    privacy: { icon: "◇", label: ui("Data og personvern", "Data & Privacy") },
+    appearance: { icon: "◐", label: ui("Utseende", "Appearance") },
+    help: { icon: "?", label: ui("Hjelp / gjennomgang", "Help / Tutorial") },
+  };
+
   const showReconnectOverlay =
     twitchConnected &&
     hadChatConnection &&
@@ -9228,6 +9279,18 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                 SHOW_ADVANCED_SETTINGS_KEY,
                 false
               )
+            );
+          } else if (
+            event.key === SETTINGS_NAV_ORDER_KEY
+          ) {
+            setSettingsNavOrder(
+              readSettingsNavOrder()
+            );
+          } else if (
+            event.key === DISMISSED_WARNINGS_KEY
+          ) {
+            setDismissedWarnings(
+              readDismissedWarnings()
             );
           }
         };
@@ -38946,6 +39009,22 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
           ? "warning"
           : "good";
 
+  function dismissStatusWarning(
+    id: string,
+    neverShowAgain: boolean
+  ) {
+    setDismissedWarnings((current) => {
+      const next = current.includes(id) ? current : [...current, id];
+      if (neverShowAgain) writeDismissedWarnings(next);
+      return next;
+    });
+  }
+
+  function resetDismissedStatusWarnings() {
+    setDismissedWarnings([]);
+    writeDismissedWarnings([]);
+  }
+
   function renderYouTubeQuotaPanel() {
     return (
     <div
@@ -44143,32 +44222,52 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
             <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
               <div aria-label={ui("Innstillingssider", "Settings pages")} style={{ width: 168, minWidth: 168, minHeight: 0, overflowY: "auto", padding: "8px 6px", background: theme.panel, borderRight: `1px solid ${theme.border}`, boxSizing: "border-box", display: "flex", flexDirection: "column" }}>
-                {[
-                  ["general", "⌂", ui("Generelt", "General")],
-                  ["profiles", "▧", ui("Profiler", "Profiles")],
-                  ["accounts", "♙", ui("Kontoer", "Accounts")],
-                  ["usage", "◴", ui("Kvote og bruk", "Quota & Usage")],
-                  ["obs", "◈", ui("OBS / stream", "OBS / Stream")],
-                  ["kick", "K", "Kick"],
-                  ["emotes", "☺", ui("Emoter", "Emotes")],
-                  ["chat", "▤", ui("Chat", "Chat")],
-                  ["tabs", "▥", ui("Kanalfaner", "Channel Tabs")],
-                  ["highlights", "✦", ui("Markeringer", "Highlights")],
-                  ["ignores", "⊘", ui("Ignorerte", "Ignores")],
-                  ["privacy", "◇", ui("Data og personvern", "Data & Privacy")],
-                  ["appearance", "◐", ui("Utseende", "Appearance")],
-                  ["help", "?", ui("Hjelp / gjennomgang", "Help / Tutorial")],
-                ]
-                  .map((item) => {
-                  const id = item[0] as SettingsSection;
+                {settingsNavOrder.map((id) => {
                   const active = settingsSection === id;
+                  const item = settingsNavMeta[id];
                   return (
-                    <button key={id} aria-current={active ? "page" : undefined} onClick={() => { setSettingsSection(id); setSettingsSearchQuery(""); setShowAddAccount(false); setShowYoutubeSetup(false); setShowKickSetup(false); setAccountNotice(""); }} style={{ width: "100%", minHeight: 34, flexShrink: 0, display: "flex", alignItems: "center", gap: 9, padding: "0 9px", border: "none", borderRadius: 4, background: active ? (appearanceMode === "light" ? "#e6e8ec" : "#292b31") : "transparent", color: active ? theme.text : theme.muted, cursor: "pointer", textAlign: "left", fontFamily: "inherit", fontSize: 11 }}>
-                      <span style={{ width: 16, textAlign: "center", color: active ? "#a970ff" : theme.subtle }}>{item[1]}</span>
-                      <span>{item[2]}</span>
+                    <button
+                      key={id}
+                      draggable
+                      aria-current={active ? "page" : undefined}
+                      title={ui("Dra for å endre rekkefølge", "Drag to reorder")}
+                      onDragStart={(event) => {
+                        setDraggedSettingsSection(id);
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData("text/fyflade-settings-section", id);
+                      }}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "move";
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        const source = (draggedSettingsSection || event.dataTransfer.getData("text/fyflade-settings-section")) as SettingsSectionId;
+                        const next = moveSettingsSection(settingsNavOrder, source, id);
+                        setSettingsNavOrder(next);
+                        writeSettingsNavOrder(next);
+                        setDraggedSettingsSection(null);
+                      }}
+                      onDragEnd={() => setDraggedSettingsSection(null)}
+                      onClick={() => { setSettingsSection(id); setSettingsSearchQuery(""); setShowAddAccount(false); setShowYoutubeSetup(false); setShowKickSetup(false); setAccountNotice(""); }}
+                      style={{ width: "100%", minHeight: 34, flexShrink: 0, display: "flex", alignItems: "center", gap: 7, padding: "0 7px", border: "none", borderRadius: 4, background: active ? (appearanceMode === "light" ? "#e6e8ec" : "#292b31") : draggedSettingsSection === id ? hexColorWithAlpha(theme.accent, .12) : "transparent", color: active ? theme.text : theme.muted, cursor: draggedSettingsSection ? "grabbing" : "grab", textAlign: "left", fontFamily: "inherit", fontSize: 11, opacity: draggedSettingsSection === id ? .6 : 1 }}
+                    >
+                      <span aria-hidden="true" style={{ width: 9, color: theme.subtle, fontSize: 9 }}>⋮⋮</span>
+                      <span style={{ width: 16, textAlign: "center", color: active ? "#a970ff" : theme.subtle }}>{item.icon}</span>
+                      <span>{item.label}</span>
                     </button>
                   );
-                  })}
+                })}
+                <button
+                  onClick={() => {
+                    const next = [...DEFAULT_SETTINGS_NAV_ORDER];
+                    setSettingsNavOrder(next);
+                    writeSettingsNavOrder(next);
+                  }}
+                  style={{ margin: "6px 7px 0", padding: "5px 6px", border: "none", background: "transparent", color: theme.subtle, cursor: "pointer", fontFamily: "inherit", fontSize: 8.5, textAlign: "left" }}
+                >
+                  {ui("Tilbakestill rekkefølge", "Reset order")}
+                </button>
                 <div
                   style={{
                     marginTop: "auto",
@@ -44870,20 +44969,98 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                 {!settingsSearchActive && settingsSection === "usage" && (
                   <div style={{ padding: 16 }}>
                     <div style={{ fontSize: 17, fontWeight: 800 }}>
-                      {ui("Kvote og bruk", "Quota & Usage")}
+                      {ui("Kvote og API-bruk", "Quota & API Usage")}
                     </div>
                     <p style={{ color: theme.muted, fontSize: 11, lineHeight: "18px", margin: "6px 0 14px" }}>
                       {ui(
-                        "YouTube-bruk registrert på denne PC-en. Tilkoblingskontroll finner du under Hjelp / gjennomgang.",
-                        "YouTube usage recorded on this PC. Connection diagnostics are under Help / Tutorial."
+                        "Samlet plattformstatus. YouTube viser lokal API-bruk mot FyFlades delte prosjekt; Twitch og Kick viser virkelig tilkoblingsaktivitet fordi de ikke har en tilsvarende offentlig dagsprosent.",
+                        "Combined platform status. YouTube shows local API activity against FyFlade's shared project; Twitch and Kick show real connection activity because they do not provide an equivalent public daily percentage."
                       )}
                     </p>
-                    <div style={{ border: `1px solid ${theme.border}`, borderRadius: 7, background: theme.panel }}>
+
+                    <div style={{ display: "grid", gap: 7, marginBottom: 10 }}>
+                      {youtubeQuotaLevel !== "good" &&
+                        !dismissedWarnings.includes(`youtube-quota:${youtubeQuotaNormalized.dayKey}:${youtubeQuotaLevel}`) && (
+                          <DismissibleStatusBanner
+                            title={youtubeQuotaLevel === "exhausted" ? ui("YouTube-kvoten er brukt opp", "YouTube quota is exhausted") : ui("YouTube-kvoten begynner å bli lav", "YouTube quota is running low")}
+                            message={youtubeQuotaLevel === "exhausted" ? ui("YouTube-funksjoner kan være utilgjengelige frem til Google nullstiller prosjektkvoten.", "YouTube features may be unavailable until Google resets the project quota.") : ui("FyFlade begrenser allerede unødvendige offline-kontroller.", "FyFlade is already limiting unnecessary offline checks.")}
+                            dismissLabel={ui("Lukk", "Dismiss")}
+                            neverShowLabel={ui("Ikke vis igjen", "Don't show again")}
+                            color={youtubeQuotaLevel === "warning" ? "#e2bd58" : "#ff7169"}
+                            onDismiss={(neverShowAgain) => dismissStatusWarning(`youtube-quota:${youtubeQuotaNormalized.dayKey}:${youtubeQuotaLevel}`, neverShowAgain)}
+                          />
+                        )}
+                      {(kickSubscriptionHealth.status === "limited" || kickSubscriptionHealth.status === "error") &&
+                        !dismissedWarnings.includes(`kick-subscription:${kickSubscriptionHealth.status}`) && (
+                          <DismissibleStatusBanner
+                            title={ui("Kick-chat trenger oppmerksomhet", "Kick chat needs attention")}
+                            message={kickSubscriptionHealth.message || ui("Kontroller eller reparer Kick-abonnementene.", "Check or repair the Kick subscriptions.")}
+                            dismissLabel={ui("Lukk", "Dismiss")}
+                            neverShowLabel={ui("Ikke vis igjen", "Don't show again")}
+                            color="#ff7169"
+                            onDismiss={(neverShowAgain) => dismissStatusWarning(`kick-subscription:${kickSubscriptionHealth.status}`, neverShowAgain)}
+                          />
+                        )}
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+                      <PlatformApiStatusCard
+                        platform="Twitch"
+                        icon="T"
+                        accent="#9147ff"
+                        state={twitchHealthState}
+                        statusLabel={connectionHealthDetail(twitchHealthState, "Twitch")}
+                        detail={ui("IRC-chat og kontotilkobling.", "IRC chat and account connection.")}
+                        metrics={[
+                          { label: ui("Lagrede kanaler", "Saved channels"), value: savedChannelLoginsRef.current.length },
+                          { label: ui("Åpne faner", "Open tabs"), value: channelTabs.filter((tab) => tab.platform === "twitch").length },
+                        ]}
+                        note={ui("Ingen fast daglig kvoteprosent rapporteres i FyFlade.", "FyFlade does not report a fixed daily quota percentage.")}
+                        colors={theme}
+                      />
+                      <PlatformApiStatusCard
+                        platform="Kick"
+                        icon="K"
+                        accent="#35bd14"
+                        state={kickHealthState}
+                        statusLabel={connectionHealthDetail(kickHealthState, "Kick")}
+                        detail={kickSubscriptionHealth.message || ui("Direkte chat og webhook-abonnementer.", "Direct chat and webhook subscriptions.")}
+                        metrics={[
+                          { label: ui("Kanaler", "Channels"), value: kickTrackedChannelIds.size },
+                          { label: ui("Live nå", "Live now"), value: kickLiveChannelIds.size },
+                          { label: ui("Abonnementer", "Subscriptions"), value: kickExpectedSubscriptionCount },
+                        ]}
+                        note={ui("Kick publiserer ikke et nøyaktig daglig antall igjen.", "Kick does not publish an exact daily remaining count.")}
+                        colors={theme}
+                      />
+                      <PlatformApiStatusCard
+                        platform="YouTube"
+                        icon="Y"
+                        accent="#ff0033"
+                        state={youtubeHealthState}
+                        statusLabel={connectionHealthDetail(youtubeHealthState, "YouTube")}
+                        detail={ui("Streaming-chat og Data API.", "Streaming chat and Data API.")}
+                        metrics={[
+                          { label: ui("API-kall i dag", "API calls today"), value: youtubeQuotaNormalized.requestCount },
+                          { label: ui("Feil", "Errors"), value: youtubeQuotaNormalized.errorCount },
+                          { label: ui("Begrensninger", "Rate limits"), value: youtubeQuotaNormalized.rateLimitCount },
+                        ]}
+                        note={ui("Den faktiske kvoten deles av alle brukere av FyFlade-prosjektet.", "The actual quota is shared by all users of the FyFlade project.")}
+                        colors={theme}
+                      />
+                    </div>
+
+                    <div style={{ marginTop: 10, border: `1px solid ${theme.border}`, borderRadius: 7, background: theme.panel }}>
                       {renderYouTubeQuotaPanel()}
                     </div>
                     <button onClick={() => setSettingsSection("accounts")} style={{ ...smallButton, marginTop: 12 }}>
-                      {ui("YouTube-konto og oppsett", "YouTube account and setup")} ›
+                      {ui("Åpne kontoer", "Open accounts")} ›
                     </button>
+                    {dismissedWarnings.length > 0 && (
+                      <button onClick={resetDismissedStatusWarnings} style={{ ...smallButton, marginTop: 12, marginLeft: 7 }}>
+                        {ui("Tilbakestill skjulte varsler", "Reset hidden warnings")}
+                      </button>
+                    )}
                   </div>
                 )}
                 {!settingsSearchActive && settingsSection ===

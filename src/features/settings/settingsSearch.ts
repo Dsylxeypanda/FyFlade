@@ -101,11 +101,11 @@ export const SETTINGS_SEARCH_ENTRIES: SettingsSearchEntry[] = [
   {
     id: "youtube-quota",
     section: "usage",
-    titleNo: "Kvote og bruk",
-    titleEn: "Quota & Usage",
-    descriptionNo: "Se registrert YouTube API-bruk og daglig kvoteestimat.",
-    descriptionEn: "View recorded YouTube API usage and the daily quota estimate.",
-    keywords: "youtube quota kvote api google cloud usage bruk",
+    titleNo: "Kvote og API-bruk",
+    titleEn: "Quota & API Usage",
+    descriptionNo: "Se tilkoblingsstatus for Twitch, Kick og YouTube samt lokal YouTube API-bruk.",
+    descriptionEn: "View Twitch, Kick, and YouTube connection status plus local YouTube API activity.",
+    keywords: "youtube twitch kick quota kvote api google cloud usage bruk status rate limit begrensning",
     advanced: false,
   },
   {

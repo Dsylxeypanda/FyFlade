@@ -24,6 +24,14 @@ This began as the non-destructive audit requested by the FyFlade master plan and
 - The local YouTube diagnostics now record request count, error count, rate-limit responses, last error, and per-endpoint call counts in addition to estimated units.
 - Remaining release blocker: the dedicated FyFlade Google OAuth project/client must be configured for production and submitted for Google verification before broad public distribution.
 
+### Phase 3 in progress
+
+- Settings categories can now be dragged into a custom order. The order uses stable section IDs, persists locally, synchronizes with detached Settings windows, and has a one-click reset.
+- The previous YouTube-only usage view is now a combined Quota & API Usage dashboard for Twitch, Kick, and YouTube.
+- Twitch and Kick report real connection/channel/subscription state instead of invented daily percentages. YouTube retains its local shared-project usage estimate and endpoint/error counters.
+- Reusable dismissible status banners now support session dismissal, persisted `Don't show again`, detached-window synchronization, and a reset-hidden-warnings control.
+- Remaining Phase 3 work includes deeper retry/reconnect history, timestamps/latency, broader contextual help, and a final settings-category grouping review.
+
 ## Current architecture
 
 - Desktop application: React 19 + TypeScript + Vite, hosted in Tauri 2.
