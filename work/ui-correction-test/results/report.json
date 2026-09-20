@@ -1,0 +1,451 @@
+{
+  "cases": [
+    {
+      "test": "channel right-click, override, global changes, reset, restart, reorder and isolation",
+      "result": "passed"
+    },
+    {
+      "test": "channel identity migration, platform separation, per-platform filters and persisted inheritance",
+      "result": "passed"
+    },
+    {
+      "test": "global search case-insensitive channel selection does not duplicate tab",
+      "result": "passed"
+    },
+    {
+      "test": "nickname and real username resolve same user; saved messages show context; typing causes no history rereads or HTTP",
+      "result": "passed"
+    },
+    {
+      "test": "nickname-only user opens existing local profile without creating a channel",
+      "result": "passed"
+    },
+    {
+      "test": "global search arrows, Enter settings navigation, empty state, Escape and persistence",
+      "result": "passed"
+    },
+    {
+      "test": "global index retention, bounded categories, priority, Norwegian/English aliases and help",
+      "result": "passed"
+    },
+    {
+      "test": "global help opens existing tutorial; Norwegian search and narrow layout",
+      "result": "passed"
+    },
+    {
+      "test": "Ctrl+K opens palette; Up/Down and Escape work",
+      "result": "passed"
+    },
+    {
+      "test": "command bilingual aliases and case-insensitive settings, OBS, ignores, quota, accessibility and privacy destinations",
+      "result": "passed"
+    },
+    {
+      "test": "anonymous usage is opt-in, persists locally and clears its local day marker when disabled",
+      "result": "passed"
+    },
+    {
+      "test": "Enter activates channel without duplicates; recent commands persist; Global Search command and Ctrl+Shift+F keep dialogs separate",
+      "result": "passed"
+    },
+    {
+      "test": "tutorial, diagnostics navigation and Run System Check reuse existing implementations",
+      "result": "passed"
+    },
+    {
+      "test": "account command focuses existing card; Ctrl+K preserves text fields; narrow palette fits",
+      "result": "passed"
+    },
+    {
+      "test": "profile migration preserves current Normal; built-ins repaired; unallowlisted data stripped",
+      "result": "passed"
+    },
+    {
+      "test": "built-in protection; immediate switching and existing Undo restore previous profile",
+      "result": "passed"
+    },
+    {
+      "test": "custom create, stable rename, duplicate, delete confirmation and active deletion returns to Normal",
+      "result": "passed"
+    },
+    {
+      "test": "Ctrl+K profile switching, restart persistence, reset, Minimal navigation and unchanged protected storage",
+      "result": "passed"
+    },
+    {
+      "test": "active-profile changes persist through switches/reload; reset is scoped; Settings and Global Search only navigate to Profiles",
+      "result": "passed"
+    },
+    {
+      "test": "profile switching synchronizes between main view and detached Settings without reopening",
+      "result": "passed"
+    },
+    {
+      "test": "layout model: combined default, each platform separates on all four edges and recombines without duplicates",
+      "result": "passed"
+    },
+    {
+      "test": "nested three-way layout, horizontal/vertical splits, ratio serialization, visibility and corrupt-layout fallback",
+      "result": "passed"
+    },
+    {
+      "test": "drag/drop preview separates YouTube; keyboard resizing, bounded edit Undo and Cancel leave persisted profile untouched",
+      "result": "passed"
+    },
+    {
+      "test": "keyboard docking creates three panes; hidden Inbox restores; Save persists ratios and layout locks outside editing",
+      "result": "passed"
+    },
+    {
+      "test": "profile-specific layout survives restart/switch/resize; recombination reuses chat group and Cancel restores saved three-way arrangement",
+      "result": "passed"
+    },
+    {
+      "test": "reset command requires confirmation and only removes active profile layout",
+      "result": "passed"
+    },
+    {
+      "test": "whole channel row pointer-drag reorders tabs without requiring the narrow left grip",
+      "result": "passed"
+    },
+    {
+      "test": "existing Settings search still opens correct section independently",
+      "result": "passed"
+    },
+    {
+      "test": "settings navigation and real quota source",
+      "language": "en",
+      "routes": [
+        "⌂General",
+        "▧Profiles",
+        "♙Accounts",
+        "◴Quota & Usage",
+        "◈OBS / Stream",
+        "KKick",
+        "☺Emotes",
+        "▤Chat",
+        "▥Channel Tabs",
+        "✦Highlights",
+        "⊘Ignores",
+        "◇Data & Privacy",
+        "◐Appearance",
+        "?Help / Tutorial"
+      ],
+      "measuredUnits": 123,
+      "result": "passed"
+    },
+    {
+      "test": "settings navigation and real quota source",
+      "language": "no",
+      "routes": [
+        "⌂Generelt",
+        "▧Profiler",
+        "♙Kontoer",
+        "◴Kvote og bruk",
+        "◈OBS / stream",
+        "KKick",
+        "☺Emoter",
+        "▤Chat",
+        "▥Kanalfaner",
+        "✦Markeringer",
+        "⊘Ignorerte",
+        "◇Data og personvern",
+        "◐Utseende",
+        "?Hjelp / gjennomgang"
+      ],
+      "measuredUnits": 123,
+      "result": "passed"
+    },
+    {
+      "test": "isolated saved data survives reload",
+      "result": "passed"
+    },
+    {
+      "test": "narrow App footer and popover",
+      "position": "right",
+      "statusBounds": {
+        "x": 308,
+        "y": 493,
+        "width": 84,
+        "height": 27,
+        "right": 392,
+        "bottom": 520,
+        "viewportWidth": 420,
+        "viewportHeight": 520
+      },
+      "gearBounds": {
+        "x": 392,
+        "y": 493,
+        "width": 28,
+        "height": 27,
+        "right": 420,
+        "bottom": 520,
+        "viewportWidth": 420,
+        "viewportHeight": 520
+      },
+      "result": "passed"
+    },
+    {
+      "test": "narrow App footer and popover",
+      "position": "left",
+      "statusBounds": {
+        "x": 308,
+        "y": 493,
+        "width": 84,
+        "height": 27,
+        "right": 392,
+        "bottom": 520,
+        "viewportWidth": 420,
+        "viewportHeight": 520
+      },
+      "gearBounds": {
+        "x": 392,
+        "y": 493,
+        "width": 28,
+        "height": 27,
+        "right": 420,
+        "bottom": 520,
+        "viewportWidth": 420,
+        "viewportHeight": 520
+      },
+      "result": "passed"
+    },
+    {
+      "test": "narrow App footer and popover",
+      "position": "top",
+      "statusBounds": {
+        "x": 308,
+        "y": 493,
+        "width": 84,
+        "height": 27,
+        "right": 392,
+        "bottom": 520,
+        "viewportWidth": 420,
+        "viewportHeight": 520
+      },
+      "gearBounds": {
+        "x": 392,
+        "y": 493,
+        "width": 28,
+        "height": 27,
+        "right": 420,
+        "bottom": 520,
+        "viewportWidth": 420,
+        "viewportHeight": 520
+      },
+      "result": "passed"
+    },
+    {
+      "test": "narrow App footer and popover",
+      "position": "bottom",
+      "statusBounds": {
+        "x": 308,
+        "y": 493,
+        "width": 84,
+        "height": 27,
+        "right": 392,
+        "bottom": 520,
+        "viewportWidth": 420,
+        "viewportHeight": 520
+      },
+      "gearBounds": {
+        "x": 392,
+        "y": 493,
+        "width": 28,
+        "height": 27,
+        "right": 420,
+        "bottom": 520,
+        "viewportWidth": 420,
+        "viewportHeight": 520
+      },
+      "result": "passed"
+    },
+    {
+      "test": "isolated status labels/colors, bounds and keyboard",
+      "position": "right",
+      "states": [
+        "connected",
+        "reconnecting",
+        "sign-in"
+      ],
+      "result": "passed"
+    },
+    {
+      "test": "isolated status labels/colors, bounds and keyboard",
+      "position": "right",
+      "states": [
+        "unavailable",
+        "offline",
+        "not-connected"
+      ],
+      "result": "passed"
+    },
+    {
+      "test": "isolated status labels/colors, bounds and keyboard",
+      "position": "right",
+      "states": [
+        "connecting",
+        "disconnected",
+        "connected"
+      ],
+      "result": "passed"
+    },
+    {
+      "test": "isolated status labels/colors, bounds and keyboard",
+      "position": "left",
+      "states": [
+        "connected",
+        "reconnecting",
+        "sign-in"
+      ],
+      "result": "passed"
+    },
+    {
+      "test": "isolated status labels/colors, bounds and keyboard",
+      "position": "left",
+      "states": [
+        "unavailable",
+        "offline",
+        "not-connected"
+      ],
+      "result": "passed"
+    },
+    {
+      "test": "isolated status labels/colors, bounds and keyboard",
+      "position": "left",
+      "states": [
+        "connecting",
+        "disconnected",
+        "connected"
+      ],
+      "result": "passed"
+    },
+    {
+      "test": "isolated status labels/colors, bounds and keyboard",
+      "position": "top",
+      "states": [
+        "connected",
+        "reconnecting",
+        "sign-in"
+      ],
+      "result": "passed"
+    },
+    {
+      "test": "isolated status labels/colors, bounds and keyboard",
+      "position": "top",
+      "states": [
+        "unavailable",
+        "offline",
+        "not-connected"
+      ],
+      "result": "passed"
+    },
+    {
+      "test": "isolated status labels/colors, bounds and keyboard",
+      "position": "top",
+      "states": [
+        "connecting",
+        "disconnected",
+        "connected"
+      ],
+      "result": "passed"
+    },
+    {
+      "test": "isolated status labels/colors, bounds and keyboard",
+      "position": "bottom",
+      "states": [
+        "connected",
+        "reconnecting",
+        "sign-in"
+      ],
+      "result": "passed"
+    },
+    {
+      "test": "isolated status labels/colors, bounds and keyboard",
+      "position": "bottom",
+      "states": [
+        "unavailable",
+        "offline",
+        "not-connected"
+      ],
+      "result": "passed"
+    },
+    {
+      "test": "isolated status labels/colors, bounds and keyboard",
+      "position": "bottom",
+      "states": [
+        "connecting",
+        "disconnected",
+        "connected"
+      ],
+      "result": "passed"
+    }
+  ],
+  "errors": [],
+  "fixtureInitial": {
+    "logins": "[\"fixtureone\",\"fixturetwo\"]",
+    "channelMarkup": [
+      "cached:fixturetwo",
+      "cached:fixtureone"
+    ]
+  },
+  "initial": "⋮\nFixture Two\n×\n⋮\nFixture One\n★\n×\n+\n⌕\n@\n⚙\nConnect FyFlade to an account first.\n0/500\n☺\nSend",
+  "buttons": [
+    {
+      "text": "×",
+      "label": null,
+      "title": "Remove channel"
+    },
+    {
+      "text": "×",
+      "label": null,
+      "title": "Remove channel"
+    },
+    {
+      "text": "+",
+      "label": null,
+      "title": "Add channel"
+    },
+    {
+      "text": "⌕",
+      "label": "Search FyFlade",
+      "title": "Search FyFlade (Ctrl+Shift+F)"
+    },
+    {
+      "text": "@",
+      "label": "Open smart inbox",
+      "title": "Smart inbox"
+    },
+    {
+      "text": "",
+      "label": "Twitch: Not connected. Not signed in",
+      "title": "Twitch — Not connected\nNot signed in"
+    },
+    {
+      "text": "",
+      "label": "Kick: Not connected. Not signed in",
+      "title": "Kick — Not connected\nNot signed in"
+    },
+    {
+      "text": "",
+      "label": "YouTube: Not connected. Not signed in",
+      "title": "YouTube — Not connected\nNot signed in"
+    },
+    {
+      "text": "⚙",
+      "label": "Open accounts and settings",
+      "title": "Accounts and settings"
+    },
+    {
+      "text": "☺",
+      "label": null,
+      "title": "Emotes"
+    },
+    {
+      "text": "Send",
+      "label": null,
+      "title": null
+    }
+  ],
+  "settings": "FyFlade – Settings\n↗\n×\n⌕\nAdvanced\n⌂\nGeneral\n▧\nProfiles\n♙\nAccounts\n◴\nQuota & Usage\n◈\nOBS / Stream\nK\nKick\n☺\nEmotes\n▤\nChat\n▥\nChannel Tabs\n✦\nHighlights\n⊘\nIgnores\n◇\nData & Privacy\n◐\nAppearance\n?\nHelp / Tutorial\nMade by Dsylxeypanda\nQuota & Usage\n\nYouTube usage recorded on this PC. Connection diagnostics are under Help / Tutorial.\n\nWhat is YouTube quota?\nQuota is Google's daily usage limit for the YouTube API. FyFlade uses quota units when it finds channels, connects to live chat or performs YouTube actions. This is not money and you are not charged. If the limit is reached, YouTube features may stop until the next reset.\nYouTube API quota\nAPI usage recorded on this PC today. The estimate uses the default 10,000-unit limit; your project's actual limit and total usage are in Google Cloud.\n123 / 10 000\nEstimated 9 877 units remaining\n1.2% used\nResets: midnight Pacific Time\nQuota status looks good.\nLast recorded: Isolated UI fixture\nThis counter measures API calls made by FyFlade on this PC. The actual quota is shared by everyone using the same Google project, and the exact value is available in Google Cloud.\nGoogle quota ↗\nYouTube account and setup ›"
+}

@@ -1,0 +1,8 @@
+﻿{
+    "success":  false,
+    "message":  "Exception calling \"GetResult\" with \"0\" argument(s): \"Det oppstod en feil under sending av forespørselen.\" | Det oppstod en feil under sending av forespørselen. | Kan ikke koble til den eksterne serveren | Det ble gjort forsøk på å få tilgang til en kontakt på en måte som er forbudt ifølge tilgangstillatelsene 104.19.192.176:443 (linje 96)",
+    "httpStatus":  0,
+    "createdExports":  [
+
+                       ]
+}

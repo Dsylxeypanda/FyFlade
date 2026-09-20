@@ -1,0 +1,41 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": [
+    "main",
+    "settings-popout",
+    "user-card-popout-*"
+  ],
+  "permissions": [
+    "core:default",
+    "core:webview:allow-create-webview-window",
+    "core:window:allow-create",
+    "core:window:allow-show",
+    "core:window:allow-set-focus",
+    "core:window:allow-close",
+    "opener:default",
+    "process:allow-restart",
+    "updater:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://id.twitch.tv/**" },
+        { "url": "https://api.twitch.tv/**" },
+        { "url": "https://oauth2.googleapis.com/**" },
+        { "url": "https://www.googleapis.com/**" },
+        { "url": "https://id.kick.com/**" },
+        { "url": "https://api.kick.com/**" },
+        { "url": "https://kick.com/**" },
+        { "url": "https://files.kick.com/**" },
+        { "url": "https://chatnest-kick-relay.sabryna91.workers.dev/**" },
+        { "url": "https://7tv.io/**" },
+        { "url": "https://api.7tv.app/**" },
+        { "url": "https://cdn.7tv.app/**" },
+        { "url": "https://cdn.7tv.io/**" },
+        { "url": "https://api.betterttv.net/**" },
+        { "url": "http://127.0.0.1:17173/**" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+export const TWITCH_CLIENT_ID = "zscey7jywt5zh0sqjuynhg5nlpfzw4"

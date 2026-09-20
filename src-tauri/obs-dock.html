@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FyFlade OBS Dock</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #111217;
+        color: #f0f1f4;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        background: var(--dock-background, #111217);
+        color: var(--dock-text, #f0f1f4);
+      }
+
+      .header {
+        min-height: 37px;
+        padding: 0 9px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        border-bottom: 1px solid var(--dock-border, #30333b);
+        background: var(--dock-panel, #191b21);
+        flex-shrink: 0;
+      }
+
+      .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #777c86;
+        box-shadow: 0 0 0 2px rgba(119, 124, 134, 0.15);
+      }
+
+      .status-dot.live {
+        background: #55d878;
+        box-shadow: 0 0 0 2px rgba(85, 216, 120, 0.16);
+      }
+
+      .channel {
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 11px;
+        font-weight: 750;
+      }
+
+      .brand {
+        color: var(--dock-muted, #8e939e);
+        font-size: 8px;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+      }
+
+      .chat {
+        min-height: 0;
+        flex: 1;
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding: 4px 0 7px;
+        scrollbar-width: thin;
+      }
+
+      .message {
+        padding: 3px 8px;
+        display: flex;
+        align-items: flex-start;
+        gap: 5px;
+        min-height: 25px;
+        line-height: 20px;
+        font-size: var(--dock-font-size, 13px);
+        word-break: break-word;
+      }
+
+      .message:hover { background: rgba(255,255,255,.035); }
+
+      .time {
+        width: 33px;
+        min-width: 33px;
+        color: var(--dock-muted, #8e939e);
+        font-size: 9px;
+        line-height: 20px;
+      }
+
+      .content { min-width: 0; flex: 1; }
+
+      .badges {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        margin-right: 4px;
+        vertical-align: middle;
+      }
+
+      .badge-image {
+        width: 16px;
+        height: 16px;
+        object-fit: contain;
+        vertical-align: middle;
+      }
+
+      .badge-fallback {
+        min-width: 16px;
+        height: 15px;
+        padding: 0 3px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 3px;
+        background: #6541a5;
+        color: #fff;
+        font-size: 6px;
+        font-weight: 900;
+        line-height: 15px;
+      }
+
+      .username {
+        margin-right: 4px;
+        font-weight: 800;
+      }
+
+      .fragment-image {
+        height: 27px;
+        max-width: 120px;
+        margin: -4px 2px;
+        object-fit: contain;
+        vertical-align: middle;
+        filter: drop-shadow(0 1px 1px rgba(0,0,0,.32));
+      }
+
+      .system {
+        padding: 4px 9px;
+        color: var(--dock-muted, #8e939e);
+        font-size: 10px;
+        font-style: italic;
+      }
+
+      .empty {
+        height: 100%;
+        padding: 26px;
+        display: grid;
+        place-items: center;
+        color: var(--dock-muted, #8e939e);
+        text-align: center;
+        font-size: 11px;
+        line-height: 18px;
+      }
+
+      .empty strong {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--dock-text, #f0f1f4);
+      }
+    </style>
+  </head>
+  <body>
+    <header class="header">
+      <span id="statusDot" class="status-dot"></span>
+      <span id="channel" class="channel">FyFlade</span>
+      <span class="brand">OBS Dock</span>
+    </header>
+    <main id="chat" class="chat">
+      <div class="empty"><div><strong>FyFlade is not connected yet</strong>Open FyFlade and enable OBS Dock in Settings.</div></div>
+    </main>
+
+    <script>
+      const chat = document.getElementById("chat");
+      const channel = document.getElementById("channel");
+      const statusDot = document.getElementById("statusDot");
+      let previousSignature = "";
+
+      function addText(parent, value) {
+        parent.appendChild(document.createTextNode(String(value || "")));
+      }
+
+      function fallbackBadgeLabel(badge) {
+        const type = String(badge.setId || badge.title || "badge").toLowerCase();
+        if (type.includes("moderator") || type === "mod") return "MOD";
+        if (type.includes("broadcaster") || type.includes("owner")) return "STR";
+        if (type.includes("vip")) return "VIP";
+        if (type.includes("subscriber") || type.includes("member")) return "SUB";
+        return String(badge.title || badge.setId || "B").replace(/[^a-z0-9]/gi, "").slice(0, 4).toUpperCase();
+      }
+
+      function renderMessage(message) {
+        if (message.kind === "system") {
+          const system = document.createElement("div");
+          system.className = "system";
+          addText(system, message.time + "  " + message.text);
+          return system;
+        }
+
+        const row = document.createElement("div");
+        row.className = "message";
+
+        const time = document.createElement("span");
+        time.className = "time";
+        addText(time, message.time);
+        row.appendChild(time);
+
+        const content = document.createElement("span");
+        content.className = "content";
+
+        const badges = document.createElement("span");
+        badges.className = "badges";
+        for (const badge of message.badges || []) {
+          if (badge.imageUrl) {
+            const image = document.createElement("img");
+            image.className = "badge-image";
+            image.src = badge.imageUrl;
+            image.alt = badge.title || "badge";
+            image.title = badge.title || "badge";
+            badges.appendChild(image);
+          } else {
+            const fallback = document.createElement("span");
+            fallback.className = "badge-fallback";
+            addText(fallback, fallbackBadgeLabel(badge));
+            badges.appendChild(fallback);
+          }
+        }
+        if (message.sevenTvBadgeUrl) {
+          const image = document.createElement("img");
+          image.className = "badge-image";
+          image.src = message.sevenTvBadgeUrl;
+          image.alt = "7TV badge";
+          badges.appendChild(image);
+        }
+        content.appendChild(badges);
+
+        const username = document.createElement("span");
+        username.className = "username";
+        username.style.color = message.color || "#b784ff";
+        if (message.nameStyle) Object.assign(username.style, message.nameStyle);
+        addText(username, message.username + ":");
+        content.appendChild(username);
+
+        for (const fragment of message.fragments || []) {
+          if (fragment.imageUrl) {
+            const image = document.createElement("img");
+            image.className = "fragment-image";
+            image.src = fragment.imageUrl;
+            image.alt = fragment.text || "emote";
+            image.title = fragment.text || "emote";
+            content.appendChild(image);
+          } else {
+            addText(content, fragment.text);
+          }
+        }
+
+        row.appendChild(content);
+        return row;
+      }
+
+      function render(state) {
+        const signature = JSON.stringify(state);
+        if (signature === previousSignature) return;
+        previousSignature = signature;
+
+        const nearBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 70;
+        const theme = state.theme || {};
+        document.documentElement.style.setProperty("--dock-background", theme.background || "#111217");
+        document.documentElement.style.setProperty("--dock-panel", theme.panel || "#191b21");
+        document.documentElement.style.setProperty("--dock-border", theme.border || "#30333b");
+        document.documentElement.style.setProperty("--dock-text", theme.text || "#f0f1f4");
+        document.documentElement.style.setProperty("--dock-muted", theme.muted || "#8e939e");
+        document.documentElement.style.setProperty("--dock-font-size", (state.fontSize || 13) + "px");
+
+        channel.textContent = state.channel ? state.channel.name : "FyFlade";
+        statusDot.classList.toggle("live", Boolean(state.channel && state.channel.live));
+        chat.replaceChildren();
+
+        if (!state.enabled) {
+          chat.innerHTML = '<div class="empty"><div><strong>OBS Dock is disabled</strong>Enable it in FyFlade → Settings → General.</div></div>';
+          return;
+        }
+
+        if (!state.channel) {
+          chat.innerHTML = '<div class="empty"><div><strong>No channel selected</strong>Select a channel in FyFlade.</div></div>';
+          return;
+        }
+
+        if (!state.messages || state.messages.length === 0) {
+          chat.innerHTML = '<div class="empty"><div><strong>Waiting for chat</strong>This dock follows the active channel in FyFlade.</div></div>';
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        for (const message of state.messages) fragment.appendChild(renderMessage(message));
+        chat.appendChild(fragment);
+        if (nearBottom) chat.scrollTop = chat.scrollHeight;
+      }
+
+      async function refresh() {
+        try {
+          const response = await fetch("/state", { cache: "no-store" });
+          if (response.ok) render(await response.json());
+        } catch (_) {}
+      }
+
+      refresh();
+      setInterval(refresh, 400);
+    </script>
+  </body>
+</html>

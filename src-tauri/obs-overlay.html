@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FyFlade OBS Overlay</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: transparent;
+        color: #fff;
+        --overlay-font-size: 22px;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: transparent;
+      }
+
+      body {
+        display: flex;
+        align-items: flex-end;
+        color: #fff;
+      }
+
+      .chat {
+        width: 100%;
+        padding: 12px 16px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        gap: 5px;
+      }
+
+      .message {
+        width: fit-content;
+        max-width: 100%;
+        padding: 3px 7px;
+        border-radius: 5px;
+        font-size: var(--overlay-font-size);
+        line-height: 1.35;
+        word-break: break-word;
+        transition: opacity 450ms ease;
+      }
+
+      .message.fade-in {
+        animation: fyflate-message-in 260ms ease-out both;
+      }
+
+      .message.outline {
+        text-shadow:
+          -1px -1px 0 #000,
+          1px -1px 0 #000,
+          -1px 1px 0 #000,
+          1px 1px 0 #000,
+          0 2px 4px rgba(0,0,0,.9);
+      }
+
+      @keyframes fyflate-message-in {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .platform {
+        min-width: 20px;
+        height: 20px;
+        margin-right: 5px;
+        padding: 0 3px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        color: #fff;
+        font-size: 9px;
+        font-weight: 950;
+        line-height: 20px;
+        vertical-align: 2px;
+        text-shadow: none;
+      }
+
+      .platform.twitch { background: #9147ff; }
+      .platform.kick { background: #53fc18; color: #111; }
+      .platform.youtube { background: #ff0033; }
+
+      .badges {
+        margin-right: 4px;
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        vertical-align: middle;
+      }
+
+      .badge {
+        width: 20px;
+        height: 20px;
+        object-fit: contain;
+        vertical-align: middle;
+        filter: drop-shadow(0 1px 1px rgba(0,0,0,.55));
+      }
+
+      .badge-fallback {
+        min-width: 20px;
+        height: 18px;
+        padding: 0 3px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 3px;
+        background: #6541a5;
+        color: #fff;
+        font-size: 7px;
+        font-weight: 950;
+        line-height: 18px;
+        text-shadow: none;
+      }
+
+      .username {
+        margin-right: 5px;
+        font-weight: 850;
+      }
+
+      .emote {
+        height: 1.55em;
+        max-width: 150px;
+        margin: -.3em 2px;
+        object-fit: contain;
+        vertical-align: middle;
+        filter: drop-shadow(0 1px 1px rgba(0,0,0,.45));
+      }
+
+      .preview-note {
+        margin: 16px;
+        padding: 9px 11px;
+        border: 1px solid rgba(255,255,255,.28);
+        border-radius: 6px;
+        background: rgba(13,15,20,.78);
+        color: rgba(255,255,255,.84);
+        font-size: 12px;
+        line-height: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="chat" class="chat"></main>
+
+    <script>
+      const chat = document.getElementById("chat");
+      const preview = new URLSearchParams(location.search).get("preview") === "1";
+      const seenIds = new Set();
+
+      function addText(parent, value) {
+        parent.appendChild(document.createTextNode(String(value || "")));
+      }
+
+      function fallbackBadgeLabel(badge) {
+        const type = String(badge.setId || badge.title || "badge").toLowerCase();
+        if (type.includes("moderator") || type === "mod") return "MOD";
+        if (type.includes("broadcaster") || type.includes("owner")) return "STR";
+        if (type.includes("vip")) return "VIP";
+        if (type.includes("subscriber") || type.includes("member")) return "SUB";
+        return String(badge.title || badge.setId || "B").replace(/[^a-z0-9]/gi, "").slice(0, 4).toUpperCase();
+      }
+
+      function renderMessage(message, settings, now) {
+        const row = document.createElement("div");
+        row.className = "message";
+        if (settings.textOutline) row.classList.add("outline");
+        if (settings.fadeAnimation && !seenIds.has(message.id)) row.classList.add("fade-in");
+
+        if (settings.transparentBackground) {
+          row.style.background = "transparent";
+        } else {
+          row.style.background = "rgba(13,15,20,.82)";
+        }
+
+        if (settings.messageFadeSeconds > 0 && message.timestampMs) {
+          const age = Math.max(0, now - message.timestampMs);
+          const duration = settings.messageFadeSeconds * 1000;
+          const fadeStart = duration * .78;
+          row.style.opacity = age > fadeStart
+            ? String(Math.max(0, 1 - ((age - fadeStart) / Math.max(1, duration - fadeStart))))
+            : "1";
+        }
+
+        if (settings.showPlatformIcon) {
+          const platform = String(message.platform || "twitch");
+          const icon = document.createElement("span");
+          icon.className = "platform " + platform;
+          addText(icon, platform === "kick" ? "K" : platform === "youtube" ? "YT" : "T");
+          row.appendChild(icon);
+        }
+
+        if (settings.showBadges) {
+          const badges = document.createElement("span");
+          badges.className = "badges";
+          for (const badge of message.badges || []) {
+            if (badge.imageUrl) {
+              const image = document.createElement("img");
+              image.className = "badge";
+              image.src = badge.imageUrl;
+              image.alt = badge.title || "badge";
+              badges.appendChild(image);
+            } else {
+              const fallback = document.createElement("span");
+              fallback.className = "badge-fallback";
+              addText(fallback, fallbackBadgeLabel(badge));
+              badges.appendChild(fallback);
+            }
+          }
+          if (message.sevenTvBadgeUrl) {
+            const image = document.createElement("img");
+            image.className = "badge";
+            image.src = message.sevenTvBadgeUrl;
+            image.alt = "7TV badge";
+            badges.appendChild(image);
+          }
+          row.appendChild(badges);
+        }
+
+        if (settings.showUsername) {
+          const username = document.createElement("span");
+          username.className = "username";
+          username.style.color = message.color || "#b784ff";
+          if (message.nameStyle) Object.assign(username.style, message.nameStyle);
+          addText(username, message.username + ":");
+          row.appendChild(username);
+        }
+
+        for (const fragment of message.fragments || []) {
+          if (fragment.imageUrl) {
+            const image = document.createElement("img");
+            image.className = "emote";
+            image.src = fragment.imageUrl;
+            image.alt = fragment.text || "emote";
+            row.appendChild(image);
+          } else {
+            addText(row, fragment.text);
+          }
+        }
+
+        seenIds.add(message.id);
+        return row;
+      }
+
+      function render(state) {
+        const overlay = state.overlay || {};
+        const settings = overlay.settings || {};
+        const now = Date.now();
+        document.documentElement.style.setProperty("--overlay-font-size", (settings.fontSize || 22) + "px");
+        document.body.style.background = settings.transparentBackground === false
+          ? ((state.theme && state.theme.background) || "#111217")
+          : "transparent";
+        chat.replaceChildren();
+
+        if (!overlay.enabled) {
+          if (preview) {
+            chat.innerHTML = '<div class="preview-note">Enable OBS Overlay in FyFlade → Settings → OBS / Stream.</div>';
+          }
+          return;
+        }
+
+        const fadeMs = Math.max(0, Number(settings.messageFadeSeconds || 0)) * 1000;
+        const visible = (overlay.messages || [])
+          .filter((message) => {
+            const testMessage = String(message.id || "").startsWith("fyflate-overlay-test:");
+            const lifetime = testMessage ? (fadeMs || 15000) : fadeMs;
+            return !lifetime || !message.timestampMs || now - message.timestampMs < lifetime;
+          })
+          .slice(-Math.max(1, Number(settings.maximumMessages || 8)));
+
+        if (visible.length === 0) {
+          if (preview) {
+            chat.innerHTML = '<div class="preview-note">The overlay is ready. Use “Show test message” in FyFlade or wait for chat.</div>';
+          }
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        for (const message of visible) fragment.appendChild(renderMessage(message, settings, now));
+        chat.appendChild(fragment);
+      }
+
+      async function refresh() {
+        try {
+          const response = await fetch("/state", { cache: "no-store" });
+          if (response.ok) render(await response.json());
+        } catch (_) {}
+      }
+
+      refresh();
+      setInterval(refresh, 350);
+    </script>
+  </body>
+</html>
