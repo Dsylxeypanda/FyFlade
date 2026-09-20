@@ -49,9 +49,20 @@ import {
   normalizeHighlightPreferences,
   playBuiltInHighlightSound,
   type HighlightPreferences,
+  type HighlightPulseSpeed,
   type HighlightPulseStrength,
   type HighlightSoundId,
+  type HighlightVisualStyle,
 } from "./features/highlights/highlightPreferences";
+import {
+  readTtsSettings,
+  speakTts,
+  stopTts,
+  TTS_SETTINGS_KEY,
+  writeTtsSettings,
+  type TtsMessageMode,
+  type TtsSettings,
+} from "./features/accessibility/tts";
 import {
   searchSettings,
   type SettingsSectionId,
@@ -954,6 +965,7 @@ type HighlightPulseState = {
   id: number;
   color: string;
   strength: HighlightPulseStrength;
+  speed: HighlightPulseSpeed;
 } | null;
 
 type AppearanceMode =
@@ -6707,6 +6719,17 @@ function App() {
   ] =
     useState("");
 
+  const [ttsSettings, setTtsSettings] =
+    useState<TtsSettings>(readTtsSettings);
+
+  const ttsSettingsRef = useRef<TtsSettings>(ttsSettings);
+
+  const [ttsVoices, setTtsVoices] =
+    useState<SpeechSynthesisVoice[]>([]);
+
+  const hoverTtsTimerRef =
+    useRef<number | null>(null);
+
   const [
     hoveredChannelTabId,
     setHoveredChannelTabId,
@@ -7406,6 +7429,25 @@ function App() {
     activeChatSendPlatform === "youtube"
       ? 200
       : 500;
+
+  useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
+
+    const loadVoices = () =>
+      setTtsVoices(window.speechSynthesis.getVoices());
+
+    loadVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+
+    return () => {
+      window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+      if (hoverTtsTimerRef.current !== null) {
+        window.clearTimeout(hoverTtsTimerRef.current);
+        hoverTtsTimerRef.current = null;
+      }
+      stopTts();
+    };
+  }, []);
 
   useEffect(() => {
     if (!globalSearchOpen) { setSearchHistory([]); setSearchSnapshot({ tabs: [], now: Date.now() }); return; }
@@ -9373,6 +9415,11 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
             const retention = readChatHistoryRetention();
             chatHistoryRetentionRef.current = retention;
             setChatHistoryRetention(retention);
+          } else if (event.key === TTS_SETTINGS_KEY) {
+            const next = readTtsSettings();
+            ttsSettingsRef.current = next;
+            setTtsSettings(next);
+            if (!next.enabled && !next.hoverEnabled) stopTts();
           }
         };
 
@@ -11669,7 +11716,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     key: string
   ) {
     return (
-      (key.startsWith("chatnest.") || key === CHANNEL_SETTINGS_KEY || key === CHANNEL_IDENTITIES_KEY || key === PROFILES_KEY || key === CHAT_HISTORY_RETENTION_KEY || key === SETTINGS_NAV_ORDER_KEY || key === DISMISSED_WARNINGS_KEY) &&
+      (key.startsWith("chatnest.") || key === CHANNEL_SETTINGS_KEY || key === CHANNEL_IDENTITIES_KEY || key === PROFILES_KEY || key === CHAT_HISTORY_RETENTION_KEY || key === SETTINGS_NAV_ORDER_KEY || key === DISMISSED_WARNINGS_KEY || key === TTS_SETTINGS_KEY) &&
       !key.startsWith("chatnest.internal.") &&
       !/(oauth|secret|token|client.?id|webhook|banids|quota)/i.test(
         key
@@ -13143,6 +13190,44 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     );
   }
 
+  function updateTtsSettings(
+    patch: Partial<TtsSettings>
+  ) {
+    const next = {
+      ...ttsSettingsRef.current,
+      ...patch,
+    };
+    ttsSettingsRef.current = next;
+    setTtsSettings(next);
+    writeTtsSettings(next);
+    if (!next.enabled && !next.hoverEnabled) stopTts();
+  }
+
+  function ttsMessageText(message: TwitchChatMessage) {
+    const author = message.username || message.userLogin || "";
+    return ttsSettingsRef.current.includeUsername && author
+      ? `${author}: ${message.text}`
+      : message.text;
+  }
+
+  function scheduleHoverTts(message: TwitchChatMessage) {
+    if (!ttsSettingsRef.current.hoverEnabled) return;
+    if (hoverTtsTimerRef.current !== null) {
+      window.clearTimeout(hoverTtsTimerRef.current);
+    }
+    hoverTtsTimerRef.current = window.setTimeout(() => {
+      hoverTtsTimerRef.current = null;
+      speakTts(ttsSettingsRef.current, ttsMessageText(message));
+    }, ttsSettingsRef.current.hoverDelayMs);
+  }
+
+  function cancelHoverTts() {
+    if (hoverTtsTimerRef.current !== null) {
+      window.clearTimeout(hoverTtsTimerRef.current);
+      hoverTtsTimerRef.current = null;
+    }
+  }
+
   function highlightedUserForMessage(
     message: TwitchChatMessage
   ) {
@@ -13178,8 +13263,17 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
   }
 
   function testHighlightSound(
-    soundId: HighlightSoundId
+    soundId: HighlightSoundId,
+    volume = 0.7,
+    customSoundDataUrl = ""
   ) {
+    if (soundId === "custom" && customSoundDataUrl.startsWith("data:audio/")) {
+      const audio = new Audio(customSoundDataUrl);
+      audio.volume = Math.max(0, Math.min(1, volume));
+      void audio.play().catch(() => undefined);
+      return;
+    }
+
     const context =
       getMentionAudioContext();
 
@@ -13190,7 +13284,8 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     const play = () =>
       playBuiltInHighlightSound(
         context,
-        soundId
+        soundId === "custom" ? "pling" : soundId,
+        volume
       );
 
     if (context.state === "suspended") {
@@ -13204,6 +13299,10 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     message: TwitchChatMessage,
     channelId = ""
   ) {
+    if (messageIsLocallyIgnored(message)) {
+      return;
+    }
+
     if (
       channelId &&
       !channelOverride(channelId, "highlights", true)
@@ -13216,6 +13315,17 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
         message
       );
 
+    const tts = ttsSettingsRef.current;
+    const shouldSpeak = tts.enabled && (
+      tts.mode === "all" ||
+      (tts.mode === "mentions" && storedMessageMentionsMe(message)) ||
+      (tts.mode === "highlights" && Boolean(highlighted))
+    );
+
+    if (shouldSpeak) {
+      speakTts(tts, ttsMessageText(message));
+    }
+
     if (!highlighted) {
       return;
     }
@@ -13224,7 +13334,9 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       (channelId ? channelOverride(channelId, "highlightSound", highlighted.soundEnabled) : highlighted.soundEnabled)
     ) {
       testHighlightSound(
-        highlighted.soundId
+        highlighted.soundId,
+        highlighted.soundVolume,
+        highlighted.customSoundDataUrl
       );
     }
 
@@ -13235,14 +13347,61 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     ) {
       previewHighlightPulse(
         highlighted.color,
-        highlighted.pulseStrength
+        highlighted.pulseStrength,
+        highlighted.pulseSpeed
       );
     }
   }
 
+  function saveCustomHighlightSound(
+    user: HighlightUser,
+    file: File | undefined
+  ) {
+    if (!file) return;
+    if (!file.type.startsWith("audio/") || file.size > 750 * 1024) {
+      window.alert(
+        ui(
+          "Velg en lydfil på maksimalt 750 KB.",
+          "Choose an audio file no larger than 750 KB."
+        )
+      );
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : "";
+      if (!dataUrl.startsWith("data:audio/") || dataUrl.length > 1_100_000) return;
+      const otherStoredAudioSize = highlightUsersRef.current.reduce(
+        (total, item) =>
+          item.platform === user.platform && item.userId === user.userId && item.login === user.login
+            ? total
+            : total + item.customSoundDataUrl.length,
+        0
+      );
+      if (otherStoredAudioSize + dataUrl.length > 2_500_000) {
+        window.alert(
+          ui(
+            "Egne highlight-lyder bruker allerede maksimal lokal lagringsplass. Bytt eller fjern en eksisterende lyd først.",
+            "Custom highlight sounds already use the maximum local storage. Replace or remove an existing sound first."
+          )
+        );
+        return;
+      }
+      updateHighlightPreferences(user.platform, user.userId, user.login, {
+        soundId: "custom",
+        customSoundDataUrl: dataUrl,
+        customSoundName: file.name,
+        soundEnabled: true,
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+
   function previewHighlightPulse(
     color: string,
-    strength: HighlightPulseStrength
+    strength: HighlightPulseStrength,
+    speed: HighlightPulseSpeed = "normal"
   ) {
     if (
       reducedMotionEnabled ||
@@ -13261,13 +13420,14 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       id: Date.now(),
       color,
       strength,
+      speed,
     });
 
     highlightPulseTimerRef.current =
       window.setTimeout(() => {
         setHighlightPulse(null);
         highlightPulseTimerRef.current = null;
-      }, 850);
+      }, speed === "slow" ? 1250 : speed === "fast" ? 550 : 850);
   }
 
   function saveLocalNicknames(
@@ -37242,9 +37402,13 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                         ? "rgba(255,209,102,.105)"
                         : "rgba(255,209,102,.06)"
                     : customHighlighted
-                      ? hovered
-                        ? hexColorWithAlpha(highlightedUser?.color || theme.accent, 0.17)
-                        : hexColorWithAlpha(highlightedUser?.color || theme.accent, 0.095)
+                      ? highlightedUser?.visualStyle === "fill"
+                        ? hexColorWithAlpha(highlightedUser.color, hovered ? 0.24 : 0.17)
+                        : highlightedUser?.visualStyle === "glow"
+                          ? hexColorWithAlpha(highlightedUser.color, hovered ? 0.13 : 0.07)
+                          : hovered
+                            ? hexColorWithAlpha(highlightedUser?.color || theme.accent, 0.17)
+                            : hexColorWithAlpha(highlightedUser?.color || theme.accent, 0.095)
                       : isPinned
                         ? hexColorWithAlpha("#6ea8ff", 0.09)
                       : hovered
@@ -37255,7 +37419,9 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                   mentionedMe
                     ? "2px solid rgba(255,209,102,.75)"
                     : customHighlighted
-                      ? `2px solid ${hexColorWithAlpha(highlightedUser?.color || theme.accent, 0.85)}`
+                      ? highlightedUser?.visualStyle === "bar"
+                        ? `2px solid ${hexColorWithAlpha(highlightedUser?.color || theme.accent, 0.85)}`
+                        : "2px solid transparent"
                       : isPinned
                         ? "2px solid rgba(110,168,255,.8)"
                       : "2px solid transparent";
@@ -37283,16 +37449,14 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                     key={
                       message.id
                     }
-                    onMouseEnter={() =>
-                      setHoveredMessageId(
-                        message.id
-                      )
-                    }
-                    onMouseLeave={() =>
-                      setHoveredMessageId(
-                        ""
-                      )
-                    }
+                    onMouseEnter={() => {
+                      setHoveredMessageId(message.id);
+                      scheduleHoverTts(message);
+                    }}
+                    onMouseLeave={() => {
+                      setHoveredMessageId("");
+                      cancelHoverTts();
+                    }}
                     style={{
                       position:
                         "relative",
@@ -37300,6 +37464,11 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                       background,
 
                       borderLeft,
+
+                      boxShadow:
+                        customHighlighted && highlightedUser?.visualStyle === "glow"
+                          ? `inset 0 0 13px ${hexColorWithAlpha(highlightedUser.color, hovered ? 0.34 : 0.22)}`
+                          : undefined,
 
                       padding:
                         "1px 68px 1px 0",
@@ -40722,7 +40891,13 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                 highlightPulse.color,
                 0.55
               )}`,
-              animation: "fyflate-highlight-pulse 820ms ease-out forwards",
+              animation: `fyflate-highlight-pulse ${
+                highlightPulse.speed === "slow"
+                  ? 1200
+                  : highlightPulse.speed === "fast"
+                    ? 500
+                    : 820
+              }ms ease-out forwards`,
             }}
           />
         </>
@@ -44782,6 +44957,153 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                       </div>
                     </div>
 
+                    <div style={{ marginTop: 10, padding: 12, border: `1px solid ${theme.border}`, borderRadius: 6, background: theme.panel }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                        <strong style={{ fontSize: 12 }}>{ui("Tekst-til-tale", "Text-to-speech")}</strong>
+                        <HelpTip
+                          label={ui("Forklar tekst-til-tale", "Explain text-to-speech")}
+                          text={ui(
+                            "FyFlade bruker stemmene som er tilgjengelige på PC-en. Chattekst lagres ikke av denne funksjonen og sendes ikke til utvikleren.",
+                            "FyFlade uses voices available on your PC. This feature does not save chat text or send it to the developer."
+                          )}
+                          colors={{ panel: theme.panelRaised, text: theme.text, muted: theme.muted, border: theme.borderStrong }}
+                        />
+                      </div>
+                      <div style={{ marginTop: 5, color: theme.muted, fontSize: 10, lineHeight: "16px" }}>
+                        {ui(
+                          "Les ut valgte chatmeldinger eller meldingen du holder musepekeren over. Begge deler er avslått som standard.",
+                          "Read selected chat messages aloud or read the message under your pointer. Both are off by default."
+                        )}
+                      </div>
+
+                      <div style={{ marginTop: 10, display: "grid", gap: 9 }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, color: theme.text, fontSize: 10.5, cursor: "pointer" }}>
+                          <input
+                            type="checkbox"
+                            checked={ttsSettings.enabled}
+                            onChange={(event) => updateTtsSettings({ enabled: event.target.checked })}
+                          />
+                          {ui("Les ut nye meldinger automatisk", "Read new messages automatically")}
+                        </label>
+
+                        <label style={{ display: "grid", gridTemplateColumns: "minmax(120px, 1fr) minmax(150px, 1.4fr)", alignItems: "center", gap: 10, color: theme.muted, fontSize: 10 }}>
+                          {ui("Hvilke meldinger", "Messages to read")}
+                          <select
+                            value={ttsSettings.mode}
+                            disabled={!ttsSettings.enabled}
+                            onChange={(event) => updateTtsSettings({ mode: event.target.value as TtsMessageMode })}
+                            style={{ height: 30, padding: "0 8px", border: `1px solid ${theme.borderStrong}`, borderRadius: 4, background: theme.input, color: theme.text, fontSize: 10 }}
+                          >
+                            <option value="highlights">{ui("Bare markerte brukere", "Highlighted users only")}</option>
+                            <option value="mentions">{ui("Bare mentions", "Mentions only")}</option>
+                            <option value="all">{ui("Alle synlige meldinger", "All visible messages")}</option>
+                          </select>
+                        </label>
+
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, color: theme.text, fontSize: 10.5, cursor: "pointer" }}>
+                          <input
+                            type="checkbox"
+                            checked={ttsSettings.hoverEnabled}
+                            onChange={(event) => updateTtsSettings({ hoverEnabled: event.target.checked })}
+                          />
+                          {ui("Les melding når musepekeren holdes over", "Read message when pointer hovers over it")}
+                        </label>
+
+                        <label style={{ display: "grid", gridTemplateColumns: "minmax(120px, 1fr) minmax(150px, 1.4fr)", alignItems: "center", gap: 10, color: theme.muted, fontSize: 10 }}>
+                          {ui("Forsinkelse ved hover", "Hover delay")}
+                          <select
+                            value={ttsSettings.hoverDelayMs}
+                            disabled={!ttsSettings.hoverEnabled}
+                            onChange={(event) => updateTtsSettings({ hoverDelayMs: Number(event.target.value) })}
+                            style={{ height: 30, padding: "0 8px", border: `1px solid ${theme.borderStrong}`, borderRadius: 4, background: theme.input, color: theme.text, fontSize: 10 }}
+                          >
+                            <option value={400}>0.4 s</option>
+                            <option value={700}>0.7 s</option>
+                            <option value={1200}>1.2 s</option>
+                            <option value={2000}>2.0 s</option>
+                          </select>
+                        </label>
+
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, color: theme.text, fontSize: 10.5, cursor: "pointer" }}>
+                          <input
+                            type="checkbox"
+                            checked={ttsSettings.includeUsername}
+                            onChange={(event) => updateTtsSettings({ includeUsername: event.target.checked })}
+                          />
+                          {ui("Les brukernavnet først", "Read username first")}
+                        </label>
+
+                        <label style={{ display: "grid", gridTemplateColumns: "minmax(120px, 1fr) minmax(150px, 1.4fr)", alignItems: "center", gap: 10, color: theme.muted, fontSize: 10 }}>
+                          {ui("Språk for uttale", "Speech language")}
+                          <select
+                            value={ttsSettings.language}
+                            onChange={(event) => updateTtsSettings({ language: event.target.value as TtsSettings["language"] })}
+                            style={{ height: 30, padding: "0 8px", border: `1px solid ${theme.borderStrong}`, borderRadius: 4, background: theme.input, color: theme.text, fontSize: 10 }}
+                          >
+                            <option value="auto">{ui("Automatisk / stemmen bestemmer", "Automatic / use voice default")}</option>
+                            <option value="no-NO">Norsk</option>
+                            <option value="en-US">English</option>
+                          </select>
+                        </label>
+
+                        <label style={{ display: "grid", gridTemplateColumns: "minmax(120px, 1fr) minmax(150px, 1.4fr)", alignItems: "center", gap: 10, color: theme.muted, fontSize: 10 }}>
+                          {ui("Stemme", "Voice")}
+                          <select
+                            value={ttsSettings.voiceUri}
+                            onChange={(event) => updateTtsSettings({ voiceUri: event.target.value })}
+                            style={{ height: 30, padding: "0 8px", border: `1px solid ${theme.borderStrong}`, borderRadius: 4, background: theme.input, color: theme.text, fontSize: 10, minWidth: 0 }}
+                          >
+                            <option value="">{ui("Systemstandard", "System default")}</option>
+                            {ttsVoices.map((voice) => (
+                              <option key={voice.voiceURI} value={voice.voiceURI}>
+                                {voice.name} ({voice.lang})
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, color: theme.muted, fontSize: 10 }}>
+                          <span style={{ width: 72 }}>{ui("Hastighet", "Speed")}</span>
+                          <input
+                            type="range"
+                            min="0.6"
+                            max="1.8"
+                            step="0.1"
+                            value={ttsSettings.rate}
+                            onChange={(event) => updateTtsSettings({ rate: Number(event.target.value) })}
+                            style={{ flex: 1 }}
+                          />
+                          <span style={{ width: 30, textAlign: "right" }}>{ttsSettings.rate.toFixed(1)}×</span>
+                        </label>
+
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, color: theme.muted, fontSize: 10 }}>
+                          <span style={{ width: 72 }}>{ui("Volum", "Volume")}</span>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                            value={ttsSettings.volume}
+                            onChange={(event) => updateTtsSettings({ volume: Number(event.target.value) })}
+                            style={{ flex: 1 }}
+                          />
+                          <span style={{ width: 30, textAlign: "right" }}>{Math.round(ttsSettings.volume * 100)}%</span>
+                        </label>
+                      </div>
+
+                      <div style={{ marginTop: 10, display: "flex", gap: 7 }}>
+                        <button
+                          onClick={() => speakTts(ttsSettings, ui("Dette er en test fra FyFlade.", "This is a test from FyFlade."))}
+                          style={smallButton}
+                        >
+                          ▶ {ui("Test stemme", "Test voice")}
+                        </button>
+                        <button onClick={stopTts} style={smallButton}>
+                          ■ {ui("Stopp tale", "Stop speech")}
+                        </button>
+                      </div>
+                    </div>
+
                     {showAdvancedSettings && (
                       <>
                     <div style={{ marginTop: 10, padding: 12, border: `1px solid ${theme.border}`, borderRadius: 6, background: theme.panel }}>
@@ -46845,6 +47167,11 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                               : user.platform === "youtube"
                                 ? "YouTube"
                                 : "Twitch"} · @{user.login}
+                            {user.groupName && (
+                              <span style={{ marginLeft: 6, padding: "1px 5px", borderRadius: 999, background: hexColorWithAlpha(user.color, 0.15), color: user.color }}>
+                                {user.groupName}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <button
@@ -46923,15 +47250,74 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                               <option value="pling">Pling 1</option>
                               <option value="bell">Bell</option>
                               <option value="soft">Soft</option>
+                              {user.customSoundDataUrl && (
+                                <option value="custom">{user.customSoundName || ui("Egen lyd", "Custom sound")}</option>
+                              )}
                             </select>
                             <button
-                              onClick={() => testHighlightSound(user.soundId)}
+                              onClick={() => testHighlightSound(user.soundId, user.soundVolume, user.customSoundDataUrl)}
                               title={ui("Test lyd", "Test sound")}
                               style={{ ...smallButton, height: 28 }}
                             >
                               ▶
                             </button>
+                            <label
+                              title={ui("Velg egen lyd (maks 750 KB)", "Choose a custom sound (max 750 KB)")}
+                              style={{ ...smallButton, height: 28, boxSizing: "border-box", display: "grid", placeItems: "center", cursor: "pointer" }}
+                            >
+                              +
+                              <input
+                                type="file"
+                                accept="audio/*"
+                                onChange={(event) => {
+                                  saveCustomHighlightSound(user, event.target.files?.[0]);
+                                  event.currentTarget.value = "";
+                                }}
+                                style={{ display: "none" }}
+                              />
+                            </label>
+                            {user.customSoundDataUrl && (
+                              <button
+                                onClick={() =>
+                                  updateHighlightPreferences(
+                                    user.platform,
+                                    user.userId,
+                                    user.login,
+                                    {
+                                      customSoundDataUrl: "",
+                                      customSoundName: "",
+                                      soundId: user.soundId === "custom" ? "pling" : user.soundId,
+                                    }
+                                  )
+                                }
+                                title={ui("Fjern egen lyd", "Remove custom sound")}
+                                style={{ ...smallButton, height: 28, color: "#ff827a" }}
+                              >
+                                ×
+                              </button>
+                            )}
                           </div>
+                          <label style={{ marginTop: 5, display: "flex", alignItems: "center", gap: 6, color: theme.subtle, fontSize: 8.5 }}>
+                            {ui("Volum", "Volume")}
+                            <input
+                              type="range"
+                              min="0"
+                              max="1"
+                              step="0.05"
+                              value={user.soundVolume}
+                              disabled={!user.soundEnabled}
+                              onChange={(event) =>
+                                updateHighlightPreferences(
+                                  user.platform,
+                                  user.userId,
+                                  user.login,
+                                  { soundVolume: Number(event.target.value) }
+                                )
+                              }
+                              style={{ flex: 1, minWidth: 60 }}
+                            />
+                            <span style={{ width: 28, textAlign: "right" }}>{Math.round(user.soundVolume * 100)}%</span>
+                          </label>
                         </div>
 
                         <div>
@@ -46974,7 +47360,8 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                               onClick={() =>
                                 previewHighlightPulse(
                                   user.color,
-                                  user.pulseStrength
+                                  user.pulseStrength,
+                                  user.pulseSpeed
                                 )
                               }
                               title={ui("Test visuell puls", "Test visual pulse")}
@@ -46983,7 +47370,65 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                               ✦
                             </button>
                           </div>
+                          <label style={{ marginTop: 5, display: "flex", alignItems: "center", gap: 6, color: theme.subtle, fontSize: 8.5 }}>
+                            {ui("Hastighet", "Speed")}
+                            <select
+                              value={user.pulseSpeed}
+                              disabled={!user.pulseEnabled || highlightPulseDisabled || reducedMotionEnabled}
+                              onChange={(event) =>
+                                updateHighlightPreferences(
+                                  user.platform,
+                                  user.userId,
+                                  user.login,
+                                  { pulseSpeed: event.target.value as HighlightPulseSpeed }
+                                )
+                              }
+                              style={{ flex: 1, minWidth: 0, height: 25, border: `1px solid ${theme.borderStrong}`, borderRadius: 4, background: theme.input, color: theme.text, fontSize: 8.5 }}
+                            >
+                              <option value="slow">{ui("Sakte", "Slow")}</option>
+                              <option value="normal">{ui("Normal", "Normal")}</option>
+                              <option value="fast">{ui("Rask", "Fast")}</option>
+                            </select>
+                          </label>
                         </div>
+                      </div>
+                      <div style={{ marginTop: 7, display: "grid", gridTemplateColumns: "minmax(150px, 1fr) minmax(150px, 1fr)", gap: 8 }}>
+                        <label style={{ color: theme.muted, fontSize: 8.5 }}>
+                          {ui("Gruppe (valgfritt)", "Group (optional)")}
+                          <input
+                            value={user.groupName}
+                            maxLength={40}
+                            placeholder={ui("f.eks. Moderatorer", "e.g. Moderators")}
+                            onChange={(event) =>
+                              updateHighlightPreferences(
+                                user.platform,
+                                user.userId,
+                                user.login,
+                                { groupName: event.target.value }
+                              )
+                            }
+                            style={{ width: "100%", height: 27, boxSizing: "border-box", marginTop: 3, padding: "0 7px", border: `1px solid ${theme.borderStrong}`, borderRadius: 4, background: theme.input, color: theme.text, fontSize: 9 }}
+                          />
+                        </label>
+                        <label style={{ color: theme.muted, fontSize: 8.5 }}>
+                          {ui("Meldingsstil", "Message style")}
+                          <select
+                            value={user.visualStyle}
+                            onChange={(event) =>
+                              updateHighlightPreferences(
+                                user.platform,
+                                user.userId,
+                                user.login,
+                                { visualStyle: event.target.value as HighlightVisualStyle }
+                              )
+                            }
+                            style={{ width: "100%", height: 27, marginTop: 3, padding: "0 7px", border: `1px solid ${theme.borderStrong}`, borderRadius: 4, background: theme.input, color: theme.text, fontSize: 9 }}
+                          >
+                            <option value="bar">{ui("Fargelinje", "Color bar")}</option>
+                            <option value="fill">{ui("Farget bakgrunn", "Color fill")}</option>
+                            <option value="glow">{ui("Glød", "Glow")}</option>
+                          </select>
+                        </label>
                       </div>
                     </div>
                   ))

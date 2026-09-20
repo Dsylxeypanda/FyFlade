@@ -42,6 +42,17 @@ This began as the non-destructive audit requested by the FyFlade master plan and
 - Emote autocomplete retains the existing suggestion-only behavior: short ASCII faces such as `:D` are excluded and Enter sends the typed text; only Tab accepts a highlighted suggestion.
 - The send button now exposes the current destination with Twitch/Kick/YouTube color and a `T`, `K`, or `Y` label, complementing the existing `/t`, `/k`, and `/y` shortcuts.
 
+### Phase 5 in progress
+
+- Per-user highlight sounds now have persistent volume controls and the existing test button respects the selected volume.
+- Per-user custom audio files are supported with a 750 KB file cap and a 2.5 MB aggregate local-storage cap. The files remain local and are stored with the existing highlight preferences.
+- Highlight messages support color-bar, filled-background, and glow styles. Visual pulses support slow, normal, and fast timing in addition to the existing strength options. Existing saved highlight users migrate to the previous color-bar style and normal timing automatically.
+- Optional group labels organize highlighted users without replacing any per-user color, sound, or pulse rule.
+- Local text-to-speech settings are available under General → Accessibility. Automatic reading can be limited to highlighted users, mentions, or all visible messages; locally ignored users are not read.
+- Optional hover-to-speak includes a configurable delay. Language, voice, rate, volume, username inclusion, test, and immediate stop controls are included.
+- Text-to-speech and hover reading are disabled by default. FyFlade uses the browser/Windows speech interface and does not send spoken chat text to the developer.
+- TTS preferences are synchronized with detached Settings windows and included in safe settings backup files; chat text is not stored by TTS.
+
 ## Current architecture
 
 - Desktop application: React 19 + TypeScript + Vite, hosted in Tauri 2.

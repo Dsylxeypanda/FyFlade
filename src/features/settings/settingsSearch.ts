@@ -43,9 +43,9 @@ export const SETTINGS_SEARCH_ENTRIES: SettingsSearchEntry[] = [
     section: "general",
     titleNo: "Tilgjengelighet",
     titleEn: "Accessibility",
-    descriptionNo: "Kontrast, redusert bevegelse og highlight-puls.",
-    descriptionEn: "Contrast, reduced motion, and highlight pulse.",
-    keywords: "tilgjengelighet accessibility contrast kontrast motion bevegelse pulse puls flash",
+    descriptionNo: "Kontrast, redusert bevegelse, highlight-puls og tekst-til-tale.",
+    descriptionEn: "Contrast, reduced motion, highlight pulse, and text-to-speech.",
+    keywords: "tilgjengelighet accessibility contrast kontrast motion bevegelse pulse puls flash tts tekst tale speech voice stemme hover",
     advanced: false,
   },
   {
