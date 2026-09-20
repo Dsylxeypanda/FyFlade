@@ -60,6 +60,14 @@ This began as the non-destructive audit requested by the FyFlade master plan and
 - The detached Settings window now remembers its last physical size and position. On reopen, the geometry is fitted to currently connected monitor bounds so a removed secondary monitor cannot leave Settings inaccessible off-screen.
 - Detached Settings continues to use storage-event synchronization for profiles, TTS, appearance, navigation order, warnings, history retention, highlights, and other existing shared settings.
 
+### Phase 7 in progress
+
+- The basic onboarding tour has been expanded from 9 steps to a complete cross-feature tour covering accounts, channels, combined chat, replies, `/t` `/k` `/y`, send destination, emotes, user tools, Inbox/Mentions, highlights, TTS/accessibility, history, profiles/layout, docking, OBS, API usage, appearance, and help.
+- Tutorial navigation still supports Back, Next, Skip, and Finish, and the full or focused tours remain restartable from Help. Tutorial targets now open the correct Settings category and off-screen targets are scrolled into view before spotlight measurement.
+- Spotlight rectangles remain independently clamped to every viewport edge, preventing the focus frame from extending outside the app at small window sizes.
+- The startup intro now uses established FyFlade branding without trailing dots and completes in about 1.2 seconds with subtle fade/scale/blur. Reduced-motion mode uses a short static presentation with no movement.
+- Text-based mention matching is now platform-specific: Twitch messages match the authenticated Twitch identity, Kick messages the Kick identity, and YouTube messages the YouTube identity. Structured Twitch mention IDs remain preferred when available.
+
 ## Current architecture
 
 - Desktop application: React 19 + TypeScript + Vite, hosted in Tauri 2.

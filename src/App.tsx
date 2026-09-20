@@ -7013,6 +7013,9 @@ function App() {
   const connectedMentionAliasesRef =
     useRef<string[]>([]);
 
+  const connectedMentionAliasesByPlatformRef =
+    useRef<Record<ChatPlatform, string[]>>({ twitch: [], kick: [], youtube: [] });
+
   const activeChannelIdRef =
     useRef("");
 
@@ -8057,6 +8060,15 @@ function App() {
               )
           )
         );
+      const cleanAliases = (values: unknown[]) =>
+        Array.from(new Set(values
+          .map((value) => String(value || "").trim().replace(/^@/, "").toLowerCase())
+          .filter((value) => Boolean(value) && !/\s/.test(value))));
+      connectedMentionAliasesByPlatformRef.current = {
+        twitch: cleanAliases([twitchUserLoginRef.current, twitchUserName]),
+        kick: cleanAliases([kickChannelSlug, kickUsername]),
+        youtube: cleanAliases([youtubeChannelHandle, youtubeChannelName]),
+      };
     },
     [
       mentionInboxEnabled,
@@ -8915,7 +8927,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
       const timer = window.setTimeout(
         () => setStartupIntroVisible(false),
-        reducedMotionEnabled ? 650 : 2200
+        reducedMotionEnabled ? 500 : 1200
       );
 
       return () => window.clearTimeout(timer);
@@ -22518,14 +22530,17 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     }
   }
 
-  function connectedMentionAliases() {
-    return connectedMentionAliasesRef.current;
+  function connectedMentionAliases(platform?: ChatPlatform) {
+    return platform
+      ? connectedMentionAliasesByPlatformRef.current[platform]
+      : connectedMentionAliasesRef.current;
   }
 
   function textMentionsConnectedAccount(
-    text: string
+    text: string,
+    platform?: ChatPlatform
   ) {
-    return connectedMentionAliases()
+    return connectedMentionAliases(platform)
       .some(
         (alias) =>
           new RegExp(
@@ -22567,7 +22582,8 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     }
 
     return textMentionsConnectedAccount(
-      message.mentionText ?? message.text
+      message.mentionText ?? message.text,
+      message.platform || "twitch"
     );
   }
 
@@ -22762,7 +22778,8 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       );
 
     return textMentionsConnectedAccount(
-      text
+      text,
+      "twitch"
     );
   }
 
@@ -22832,7 +22849,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       )
       .filter(Boolean);
 
-    return connectedMentionAliases()
+    return connectedMentionAliases(message.platform || "twitch")
       .some((alias) =>
         parentNames.includes(
           alias.toLocaleLowerCase()
@@ -40426,6 +40443,18 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
           "settings-accounts"
         ) {
           setSettingsSection("accounts");
+        } else if (activeTutorialStep.view === "settings-general") {
+          setSettingsSection("general");
+        } else if (activeTutorialStep.view === "settings-usage") {
+          setSettingsSection("usage");
+        } else if (activeTutorialStep.view === "settings-emotes") {
+          setSettingsSection("emotes");
+        } else if (activeTutorialStep.view === "settings-chat") {
+          setSettingsSection("chat");
+        } else if (activeTutorialStep.view === "settings-tabs") {
+          setSettingsSection("tabs");
+        } else if (activeTutorialStep.view === "settings-profiles") {
+          setSettingsSection("profiles");
         } else if (
           activeTutorialStep.view ===
           "settings-highlights"
@@ -40441,6 +40470,8 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
           "settings-obs"
         ) {
           setSettingsSection("obs");
+        } else if (activeTutorialStep.view === "settings-help") {
+          setSettingsSection("help");
         }
       }
 
@@ -40458,8 +40489,11 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
           return;
         }
 
-        const rect =
-          target.getBoundingClientRect();
+        let rect = target.getBoundingClientRect();
+        if (rect.bottom < 12 || rect.top > window.innerHeight - 12) {
+          target.scrollIntoView({ block: "center", behavior: "auto" });
+          rect = target.getBoundingClientRect();
+        }
 
         setTutorialTargetRect({
           left: rect.left,
@@ -40881,7 +40915,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
           <>
             {!reducedMotionEnabled && (
               <style>
-                {`@keyframes fyflate-startup-intro { 0% { opacity: 0; transform: translateY(20px); } 20% { opacity: 1; transform: translateY(0); } 66% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-7px); } }`}
+                {`@keyframes fyflate-startup-intro { 0% { opacity: 0; transform: translateY(8px) scale(.97); filter: blur(6px); } 28% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } 72% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } 100% { opacity: 0; transform: translateY(-3px) scale(1.01); filter: blur(1px); } }`}
               </style>
             )}
             <div
@@ -40906,7 +40940,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                   gap: 13,
                   animation: reducedMotionEnabled
                     ? "none"
-                    : "fyflate-startup-intro 2.2s cubic-bezier(.22,.75,.2,1) both",
+                    : "fyflate-startup-intro 1.15s cubic-bezier(.22,.75,.2,1) both",
                 }}
               >
                 <img
@@ -40922,7 +40956,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                     textShadow: `0 0 22px ${hexColorWithAlpha(theme.accent, .42)}`,
                   }}
                 >
-                  FY FLADE.....
+                  FYFLADE
                 </strong>
               </div>
             </div>
@@ -44754,9 +44788,9 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                     </div>
                   </div>
                 )}
-                {!settingsSearchActive && settingsSection === "profiles" && <ProfilesPanel colors={theme} store={profiles.store} no={resolvedAppLanguage === "no"} onSwitch={switchProfile} onCreate={profiles.create} onRename={profiles.rename} onDelete={id => { const undo = profiles.remove(id); if (undo) showUndoAction(ui("Profilen er slettet", "Profile deleted"), undo); }} onReset={id => { const undo = profiles.reset(id); if (undo) showUndoAction(ui("Profilen er tilbakestilt", "Profile reset"), undo); }} onEditLayout={startLayoutEdit} confirmLayoutReset={confirmLayoutReset} setConfirmLayoutReset={setConfirmLayoutReset} onResetLayout={() => { const undo = profiles.setLayout(activeProfile.id, null); setLayoutSession(null); if (undo) showUndoAction(ui("Profillayouten er tilbakestilt", "Profile layout reset"), undo); }} />}
+                {!settingsSearchActive && settingsSection === "profiles" && <div data-tutorial-id="settings-profiles"><ProfilesPanel colors={theme} store={profiles.store} no={resolvedAppLanguage === "no"} onSwitch={switchProfile} onCreate={profiles.create} onRename={profiles.rename} onDelete={id => { const undo = profiles.remove(id); if (undo) showUndoAction(ui("Profilen er slettet", "Profile deleted"), undo); }} onReset={id => { const undo = profiles.reset(id); if (undo) showUndoAction(ui("Profilen er tilbakestilt", "Profile reset"), undo); }} onEditLayout={startLayoutEdit} confirmLayoutReset={confirmLayoutReset} setConfirmLayoutReset={setConfirmLayoutReset} onResetLayout={() => { const undo = profiles.setLayout(activeProfile.id, null); setLayoutSession(null); if (undo) showUndoAction(ui("Profillayouten er tilbakestilt", "Profile layout reset"), undo); }} /></div>}
                 {!settingsSearchActive && settingsSection === "general" && (
-                  <div style={{ padding: 16 }}>
+                  <div data-tutorial-id="settings-general" style={{ padding: 16 }}>
                     <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 6 }}>
                       {ui("Generelt", "General")}
                     </div>
@@ -44968,7 +45002,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                       </div>
                     </div>
 
-                    <div style={{ marginTop: 10, padding: 12, border: `1px solid ${theme.border}`, borderRadius: 6, background: theme.panel }}>
+                    <div data-tutorial-id="settings-accessibility" style={{ marginTop: 10, padding: 12, border: `1px solid ${theme.border}`, borderRadius: 6, background: theme.panel }}>
                       <strong data-command-target="accessibility" tabIndex={-1} style={{ fontSize: 12 }}>{ui("Tilgjengelighet", "Accessibility")}</strong>
                       <div style={{ marginTop: 8, display: "grid", gap: 9 }}>
                         <label style={{ display: "flex", alignItems: "center", gap: 8, color: theme.text, fontSize: 10.5, cursor: "pointer" }}>
@@ -45352,6 +45386,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                   </div>
                 )}
                 {!settingsSearchActive && settingsSection === "obs" && (
+                  <div data-tutorial-id="settings-obs">
                   <ObsOverlaySettingsPanel
                     language={resolvedAppLanguage}
                     settings={obsOverlaySettings}
@@ -45380,6 +45415,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                     onPreview={() => void openUrl(OBS_OVERLAY_PREVIEW_URL)}
                     onTestMessage={showObsOverlayTestMessage}
                   />
+                  </div>
                 )}
                 {!settingsSearchActive && settingsSection === "accounts" && (
                   <div data-tutorial-id="settings-accounts" style={{ padding: 16 }}>
@@ -45522,7 +45558,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                   </div>
                 )}
                 {!settingsSearchActive && settingsSection === "usage" && (
-                  <div style={{ padding: 16 }}>
+                  <div data-tutorial-id="settings-usage" style={{ padding: 16 }}>
                     <div style={{ fontSize: 17, fontWeight: 800 }}>
                       {ui("Kvote og API-bruk", "Quota & API Usage")}
                     </div>
@@ -46104,6 +46140,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                   <>
             {/* EMOTE SETTINGS */}
             <div
+              data-tutorial-id="settings-emotes"
               style={{
                 padding: 14,
                 borderBottom: `1px solid ${theme.border}`,
@@ -46293,6 +46330,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                   <>
             {/* CHAT SETTINGS */}
             <div
+              data-tutorial-id="settings-chat"
               style={{
                 padding:
                   14,
@@ -46662,6 +46700,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                   <>
             {/* CHANNEL TAB SETTINGS */}
             <div
+              data-tutorial-id="settings-tabs"
               style={{
                 padding: 14,
                 borderBottom: `1px solid ${theme.border}`,
@@ -48226,7 +48265,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                   </div>
                 )}
                 {!settingsSearchActive && settingsSection === "help" && (
-                  <div style={{ padding: 16 }}>
+                  <div data-tutorial-id="settings-help" style={{ padding: 16 }}>
                     <div style={{ marginBottom: 14, padding: 12, border: `1px solid ${theme.border}`, borderRadius: 7, background: theme.panel }}>
                       <strong>{ui("Hurtigkommandoer", "Quick Commands")} — Ctrl+K</strong>
                       <p>{ui("Profiler lar deg raskt bytte visning for ulike situasjoner. Velg Profiler i innstillingene eller skriv «bytt til» i Ctrl+K. Kontoer og innhold endres ikke.", "Profiles let you quickly change your view for different situations. Open Profiles in Settings or type ‘switch to’ in Ctrl+K. Accounts and content stay unchanged.")}</p>

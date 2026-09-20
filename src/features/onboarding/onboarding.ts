@@ -19,9 +19,16 @@ export type TutorialView =
   | "main"
   | "inbox"
   | "settings-accounts"
+  | "settings-general"
+  | "settings-usage"
+  | "settings-emotes"
+  | "settings-chat"
+  | "settings-tabs"
+  | "settings-profiles"
   | "settings-highlights"
   | "settings-appearance"
-  | "settings-obs";
+  | "settings-obs"
+  | "settings-help";
 
 export type TutorialStep = {
   id: string;
@@ -71,6 +78,15 @@ const BASIC_STEPS: TutorialStep[] = [
     bodyEn: "Messages for the selected channel tab appear here with platform icons, badges, and emotes.",
   },
   {
+    id: "accounts",
+    targetId: "settings-accounts",
+    view: "settings-accounts",
+    titleNo: "Koble til kontoer",
+    titleEn: "Connect accounts",
+    bodyNo: "Logg inn med Twitch, Kick og YouTube her. Innloggingen din lagres lokalt og deles ikke med utvikleren.",
+    bodyEn: "Sign in to Twitch, Kick, and YouTube here. Your sign-in is stored locally and is not shared with the developer.",
+  },
+  {
     id: "user-profile",
     targetId: "chat",
     view: "main",
@@ -87,6 +103,15 @@ const BASIC_STEPS: TutorialStep[] = [
     titleEn: "Reply and send",
     bodyNo: "Hold pekeren over en Twitch-melding for å svare. I samlede faner kan /t, /k eller /y velge plattform.",
     bodyEn: "Hover over a Twitch message to reply. In combined tabs, /t, /k, or /y selects the platform.",
+  },
+  {
+    id: "send-destination",
+    targetId: "chat-input",
+    view: "main",
+    titleNo: "Velg riktig plattform",
+    titleEn: "Choose the right platform",
+    bodyNo: "I en samlet chat skriver du /t, /k eller /y og mellomrom. Send-knappen viser plattformen før meldingen sendes.",
+    bodyEn: "In a combined chat, type /t, /k, or /y followed by a space. The Send button shows the platform before the message is sent.",
   },
   {
     id: "emotes",
@@ -107,6 +132,15 @@ const BASIC_STEPS: TutorialStep[] = [
     bodyEn: "Mentions, replies, Twitch private messages, and important events from every platform are collected here.",
   },
   {
+    id: "mentions",
+    targetId: "inbox-view",
+    view: "inbox",
+    titleNo: "Omtaler og svar",
+    titleEn: "Mentions and replies",
+    bodyNo: "Innboksen samler bare omtaler som gjelder dine innloggede kontoer, i tillegg til svar og viktige hendelser.",
+    bodyEn: "The Inbox collects only mentions for your signed-in accounts, along with replies and important events.",
+  },
+  {
     id: "settings",
     targetId: "settings-button",
     view: "main",
@@ -124,6 +158,96 @@ const BASIC_STEPS: TutorialStep[] = [
     bodyNo: "Gi viktige personer egen farge, lyd og en valgfri, rolig puls så meldingene blir lettere å oppdage.",
     bodyEn: "Give important people a color, sound, and optional subtle pulse so their messages are easier to notice.",
   },
+  {
+    id: "highlight-effects",
+    targetId: "settings-highlights",
+    view: "settings-highlights",
+    titleNo: "Lyd og visuelle effekter",
+    titleEn: "Sound and visual effects",
+    bodyNo: "Velg volum, egen lyd, farge, meldingsstil og puls per person. Redusert bevegelse overstyrer puls trygt.",
+    bodyEn: "Choose volume, a custom sound, color, message style, and pulse per person. Reduced motion safely overrides pulse.",
+  },
+  {
+    id: "tts-accessibility",
+    targetId: "settings-accessibility",
+    view: "settings-general",
+    titleNo: "Tale og tilgjengelighet",
+    titleEn: "Speech and accessibility",
+    bodyNo: "Tekst-til-tale, hover-opplesning, kontrast og redusert bevegelse styres her. TTS er avslått som standard.",
+    bodyEn: "Text-to-speech, hover reading, contrast, and reduced motion are controlled here. TTS is off by default.",
+  },
+  {
+    id: "chat-history",
+    targetId: "settings-chat",
+    view: "settings-chat",
+    titleNo: "Chat og historikk",
+    titleEn: "Chat and history",
+    bodyNo: "Velg tekststørrelse og hvor lenge lokal chat skal lagres. Du kan slå av lagring eller slette alt senere.",
+    bodyEn: "Choose text size and how long local chat is kept. You can disable saving or clear everything later.",
+  },
+  {
+    id: "profiles-layout",
+    targetId: "settings-profiles",
+    view: "settings-profiles",
+    titleNo: "Profiler og layout",
+    titleEn: "Profiles and layout",
+    bodyNo: "Profiler husker visning og layout. Du kan opprette, duplisere, gi nytt navn og redigere paneloppsettet.",
+    bodyEn: "Profiles remember view and layout. You can create, duplicate, rename, and edit the panel arrangement.",
+  },
+  {
+    id: "tabs-docking",
+    targetId: "settings-tabs",
+    view: "settings-tabs",
+    titleNo: "Faner og docking",
+    titleEn: "Tabs and docking",
+    bodyNo: "Tilpass fanestørrelse og plassering. I layoutredigering kan chatter deles, kombineres, flyttes og endre størrelse.",
+    bodyEn: "Customize tab size and position. In layout editing, chats can be split, combined, moved, and resized.",
+  },
+  {
+    id: "emote-settings",
+    targetId: "settings-emotes",
+    view: "settings-emotes",
+    titleNo: "Emoter",
+    titleEn: "Emotes",
+    bodyNo: "Her styrer du 7TV, BTTV og kanal-emoter. Forslag erstatter aldri teksten før du velger et forslag selv.",
+    bodyEn: "Control 7TV, BTTV, and channel emotes here. Suggestions never replace your text until you choose one.",
+  },
+  {
+    id: "obs",
+    targetId: "settings-obs",
+    view: "settings-obs",
+    titleNo: "OBS og stream",
+    titleEn: "OBS and streaming",
+    bodyNo: "Lag en ren OBS-dock eller gjennomsiktig overlay og velg hvilke kanaler og plattformer som skal vises.",
+    bodyEn: "Create a clean OBS Dock or transparent overlay and choose which channels and platforms are included.",
+  },
+  {
+    id: "api-usage",
+    targetId: "settings-usage",
+    view: "settings-usage",
+    titleNo: "API-status",
+    titleEn: "API status",
+    bodyNo: "Denne siden viser status, feil og lokal API-aktivitet for Twitch, Kick og YouTube uten å vise hemmelige nøkler.",
+    bodyEn: "This page shows status, errors, and local API activity for Twitch, Kick, and YouTube without exposing secret keys.",
+  },
+  {
+    id: "appearance",
+    targetId: "settings-appearance",
+    view: "settings-appearance",
+    titleNo: "Utseende",
+    titleEn: "Appearance",
+    bodyNo: "Velg tema, farger, logo og bakgrunn. Standardknappene lar deg trygt gå tilbake.",
+    bodyEn: "Choose theme, colors, logo, and background. Default buttons let you safely restore the original look.",
+  },
+  {
+    id: "help",
+    targetId: "settings-help",
+    view: "settings-help",
+    titleNo: "Hjelp senere",
+    titleEn: "Help later",
+    bodyNo: "Du kan starte hele gjennomgangen eller korte guider på nytt fra Hjelp når som helst.",
+    bodyEn: "You can restart the complete tour or shorter guides from Help at any time.",
+  },
 ];
 
 export const TUTORIALS: Record<TutorialId, TutorialDefinition> = {
@@ -131,8 +255,8 @@ export const TUTORIALS: Record<TutorialId, TutorialDefinition> = {
     id: "basic",
     titleNo: "Grunnrunde i FyFlade",
     titleEn: "FyFlade basic tour",
-    descriptionNo: "Kanaler, chat, profiler, emoter, innboks og innstillinger.",
-    descriptionEn: "Channels, chat, profiles, emotes, inbox, and settings.",
+    descriptionNo: "En full gjennomgang av kontoer, chat, verktøy, layout, OBS og innstillinger.",
+    descriptionEn: "A complete tour of accounts, chat, tools, layout, OBS, and settings.",
     steps: BASIC_STEPS,
   },
   accounts: {
