@@ -170,9 +170,17 @@ fn invalidate_youtube_stream(
     }
 }
 
-// Chat beholdes i 24 timer.
-const CHAT_HISTORY_MAX_AGE_MS: u64 =
+// Compatibility default for clients that do not provide a retention period.
+const CHAT_HISTORY_DEFAULT_MAX_AGE_MS: u64 =
     24 * 60 * 60 * 1000;
+
+fn history_cutoff(now: u64, max_age_ms: Option<u64>) -> u64 {
+    match max_age_ms {
+        Some(0) => 0,
+        Some(value) => now.saturating_sub(value),
+        None => now.saturating_sub(CHAT_HISTORY_DEFAULT_MAX_AGE_MS),
+    }
+}
 
 fn twitch_token_entry() -> Result<Entry, String> {
     Entry::new(
@@ -1936,7 +1944,7 @@ fn update_obs_dock_state(
 }
 
 // ---------------------------------------------------------
-// CHAT HISTORY - 24 TIMER
+// CHAT HISTORY
 // ---------------------------------------------------------
 
 fn current_time_ms() -> Result<u64, String> {
@@ -2032,6 +2040,7 @@ fn parse_history_line(
 
 fn load_valid_history_lines(
     file_path: &Path,
+    max_age_ms: Option<u64>,
 ) -> Result<Vec<(u64, String)>, String> {
     if !file_path.exists() {
         return Ok(Vec::new());
@@ -2050,10 +2059,7 @@ fn load_valid_history_lines(
     let now =
         current_time_ms()?;
 
-    let cutoff =
-        now.saturating_sub(
-            CHAT_HISTORY_MAX_AGE_MS
-        );
+    let cutoff = history_cutoff(now, max_age_ms);
 
     let mut valid =
         Vec::new();
@@ -2134,10 +2140,12 @@ fn rewrite_history_file(
 
 fn clean_single_history_file(
     file_path: &Path,
+    max_age_ms: Option<u64>,
 ) -> Result<(), String> {
     let valid =
         load_valid_history_lines(
-            file_path
+            file_path,
+            max_age_ms,
         )?;
 
     rewrite_history_file(
@@ -2148,6 +2156,7 @@ fn clean_single_history_file(
 
 fn clean_history_directory(
     directory: &Path,
+    max_age_ms: Option<u64>,
 ) -> Result<(), String> {
     if !directory.exists() {
         return Ok(());
@@ -2171,7 +2180,8 @@ fn clean_history_directory(
 
         if path.is_dir() {
             clean_history_directory(
-                &path
+                &path,
+                max_age_ms,
             )?;
 
             let is_empty =
@@ -2204,7 +2214,8 @@ fn clean_history_directory(
             )
         {
             clean_single_history_file(
-                &path
+                &path,
+                max_age_ms,
             )?;
         }
     }
@@ -2219,17 +2230,14 @@ fn save_chat_message(
     channel: String,
     timestamp_ms: u64,
     payload_json: String,
+    max_age_ms: Option<u64>,
 ) -> Result<(), String> {
     let now =
         current_time_ms()?;
 
-    let cutoff =
-        now.saturating_sub(
-            CHAT_HISTORY_MAX_AGE_MS
-        );
+    let cutoff = history_cutoff(now, max_age_ms);
 
-    // Ikke lagre meldinger som allerede
-    // er eldre enn 24 timer.
+    // Ikke lagre meldinger som allerede er eldre enn valgt periode.
     if timestamp_ms < cutoff {
         return Ok(());
     }
@@ -2270,6 +2278,7 @@ fn load_chat_history(
     app: tauri::AppHandle,
     platform: String,
     channel: String,
+    max_age_ms: Option<u64>,
 ) -> Result<Vec<String>, String> {
     let file_path =
         channel_history_file(
@@ -2280,11 +2289,11 @@ fn load_chat_history(
 
     let valid =
         load_valid_history_lines(
-            &file_path
+            &file_path,
+            max_age_ms,
         )?;
 
-    // Når chatten åpnes rydder vi samtidig
-    // fysisk bort alt eldre enn 24 timer.
+    // Når chatten åpnes rydder vi samtidig fysisk bort alt eldre enn valgt periode.
     rewrite_history_file(
         &file_path,
         &valid,
@@ -2304,6 +2313,7 @@ fn load_chat_history(
 #[tauri::command]
 fn cleanup_chat_history(
     app: tauri::AppHandle,
+    max_age_ms: Option<u64>,
 ) -> Result<(), String> {
     let root =
         chat_history_root(
@@ -2311,7 +2321,8 @@ fn cleanup_chat_history(
         )?;
 
     clean_history_directory(
-        &root
+        &root,
+        max_age_ms,
     )
 }
 
@@ -2325,10 +2336,10 @@ struct SearchHistoryRow {
 }
 
 // A bounded, read-only snapshot of the existing history, never a second database.
-fn collect_search_history(root: &Path, now: u64, limit: usize) -> Result<Vec<SearchHistoryRow>, String> {
+fn collect_search_history(root: &Path, now: u64, limit: usize, max_age_ms: Option<u64>) -> Result<Vec<SearchHistoryRow>, String> {
     use std::cmp::Reverse;
     use std::collections::BinaryHeap;
-    let cutoff = now.saturating_sub(CHAT_HISTORY_MAX_AGE_MS);
+    let cutoff = history_cutoff(now, max_age_ms);
     let mut latest = BinaryHeap::new();
     for platform in ["twitch", "kick", "youtube"] {
         let directory = root.join(platform);
@@ -2359,9 +2370,9 @@ fn collect_search_history(root: &Path, now: u64, limit: usize) -> Result<Vec<Sea
 }
 
 #[tauri::command]
-async fn load_search_chat_history(app: tauri::AppHandle) -> Result<Vec<SearchHistoryRow>, String> {
+async fn load_search_chat_history(app: tauri::AppHandle, max_age_ms: Option<u64>) -> Result<Vec<SearchHistoryRow>, String> {
     let root = chat_history_root(&app)?;
-    tauri::async_runtime::spawn_blocking(move || collect_search_history(&root, current_time_ms()?, 5000))
+    tauri::async_runtime::spawn_blocking(move || collect_search_history(&root, current_time_ms()?, 5000, max_age_ms))
         .await.map_err(|e| e.to_string())?
 }
 
@@ -2419,6 +2430,75 @@ fn check_chat_history_storage(
         );
 
     readable
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ChatHistoryStorageEntry {
+    platform: String,
+    channel: String,
+    bytes: u64,
+    message_count: u64,
+}
+
+#[tauri::command]
+fn list_chat_history_storage(
+    app: tauri::AppHandle,
+) -> Result<Vec<ChatHistoryStorageEntry>, String> {
+    let root = chat_history_root(&app)?;
+    let mut result = Vec::new();
+
+    for platform_entry in fs::read_dir(&root).map_err(|error| error.to_string())? {
+        let platform_entry = match platform_entry { Ok(entry) => entry, Err(_) => continue };
+        let platform_path = platform_entry.path();
+        if !platform_entry.file_type().map_err(|error| error.to_string())?.is_dir() { continue; }
+        if fs::symlink_metadata(&platform_path).map_err(|error| error.to_string())?.file_type().is_symlink() { continue; }
+        let platform = platform_entry.file_name().to_string_lossy().into_owned();
+
+        for channel_entry in fs::read_dir(&platform_path).map_err(|error| error.to_string())? {
+            let channel_entry = match channel_entry { Ok(entry) => entry, Err(_) => continue };
+            let channel_path = channel_entry.path();
+            if !channel_entry.file_type().map_err(|error| error.to_string())?.is_dir() { continue; }
+            if fs::symlink_metadata(&channel_path).map_err(|error| error.to_string())?.file_type().is_symlink() { continue; }
+            let file_path = channel_path.join("recent_chat.log");
+            if !file_path.exists() { continue; }
+            if fs::symlink_metadata(&file_path).map_err(|error| error.to_string())?.file_type().is_symlink() { continue; }
+
+            let bytes = fs::metadata(&file_path).map(|metadata| metadata.len()).unwrap_or(0);
+            let message_count = File::open(&file_path)
+                .map(BufReader::new)
+                .map(|reader| reader.lines().map_while(Result::ok).filter(|line| parse_history_line(line).is_some()).count() as u64)
+                .unwrap_or(0);
+
+            result.push(ChatHistoryStorageEntry {
+                platform: platform.clone(),
+                channel: channel_entry.file_name().to_string_lossy().into_owned(),
+                bytes,
+                message_count,
+            });
+        }
+    }
+
+    result.sort_by(|left, right| right.bytes.cmp(&left.bytes));
+    Ok(result)
+}
+
+#[tauri::command]
+fn clear_all_chat_history(
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let root = chat_history_root(&app)?;
+    for entry in fs::read_dir(&root).map_err(|error| error.to_string())? {
+        let entry = match entry { Ok(entry) => entry, Err(_) => continue };
+        let path = entry.path();
+        if fs::symlink_metadata(&path).map_err(|error| error.to_string())?.file_type().is_symlink() { continue; }
+        if path.is_dir() {
+            fs::remove_dir_all(&path).map_err(|error| error.to_string())?;
+        } else if path.file_name().and_then(|name| name.to_str()) != Some(".fyflate-storage-check") {
+            fs::remove_file(&path).map_err(|error| error.to_string())?;
+        }
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -3143,6 +3223,8 @@ pub fn run() {
                 load_search_chat_history,
                 cleanup_chat_history,
                 check_chat_history_storage,
+                list_chat_history_storage,
+                clear_all_chat_history,
                 clear_channel_chat_history
             ],
         )

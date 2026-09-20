@@ -30,6 +30,8 @@ export type SearchDocument = {
 };
 export const SEARCH_HISTORY_AGE_MS = CHAT_HISTORY_MAX_AGE_MS;
 export const SEARCH_MESSAGE_LIMIT = 5000;
+const withinRetention = (timestampMs: number, now: number, maxAgeMs: number) =>
+  timestampMs <= now && (maxAgeMs === 0 || timestampMs >= now - maxAgeMs);
 export function normalizeSearch(value: string) {
   return value.normalize("NFKC").toLocaleLowerCase().trim();
 }
@@ -46,8 +48,8 @@ export function historyContext(row: HistorySearchRow, channels: SearchChannel[])
   return { channelId: tab?.broadcasterId || "", channelName: tab?.displayName || row.channel, channelLogin: row.channel, platform: row.platform };
 }
 
-export function parseSearchHistory(row: HistorySearchRow, now: number): SearchMessage | null {
-  if (!["twitch", "kick", "youtube"].includes(row.platform) || row.timestampMs < now - SEARCH_HISTORY_AGE_MS || row.timestampMs > now) return null;
+export function parseSearchHistory(row: HistorySearchRow, now: number, maxAgeMs = SEARCH_HISTORY_AGE_MS): SearchMessage | null {
+  if (!["twitch", "kick", "youtube"].includes(row.platform) || !withinRetention(row.timestampMs, now, maxAgeMs)) return null;
   try {
     const value = JSON.parse(row.payloadJson);
     if (!value || value.kind !== "chat" || typeof value.text !== "string" || typeof value.username !== "string" || typeof value.id !== "string") return null;
@@ -58,13 +60,14 @@ export function parseSearchHistory(row: HistorySearchRow, now: number): SearchMe
 
 export function buildGlobalSearchIndex(
   channels: SearchChannel[], history: HistorySearchRow[], nicknames: Record<string, LocalNickname>,
-  language: "no" | "en", now = Date.now(), isIgnored: (message: SearchMessage) => boolean = () => false
+  language: "no" | "en", now = Date.now(), isIgnored: (message: SearchMessage) => boolean = () => false,
+  maxAgeMs = SEARCH_HISTORY_AGE_MS
 ): SearchDocument[] {
   const docs: SearchDocument[] = [];
   const users = new Map<string, SearchDocument>();
   const messages = new Map<string, { message: SearchMessage; context: SearchContext }>();
   const addMessage = (message: SearchMessage, context: SearchContext) => {
-    if (message.kind !== "chat" || message.timestampMs < now - SEARCH_HISTORY_AGE_MS || message.timestampMs > now || isIgnored(message)) return;
+    if (message.kind !== "chat" || !withinRetention(message.timestampMs, now, maxAgeMs) || isIgnored(message)) return;
     const key = `${context.platform}:${context.channelId || context.channelLogin}:${message.id}`;
     messages.set(key, { message, context });
   };
@@ -79,7 +82,7 @@ export function buildGlobalSearchIndex(
     }
   }
   for (const row of history) {
-    const message = parseSearchHistory(row, now);
+    const message = parseSearchHistory(row, now, maxAgeMs);
     if (message) addMessage(message, historyContext(row, channels));
   }
   const addUser = (message: SearchMessage, context: SearchContext) => {
@@ -111,12 +114,12 @@ export function buildGlobalSearchIndex(
 }
 
 export const SEARCH_CATEGORIES: SearchCategory[] = ["channels", "users", "settings", "messages", "help"];
-export function searchGlobalIndex(index: SearchDocument[], query: string, platform: "all" | SearchPlatform = "all", channelId = "all", limit = 8, now = Date.now()) {
+export function searchGlobalIndex(index: SearchDocument[], query: string, platform: "all" | SearchPlatform = "all", channelId = "all", limit = 8, now = Date.now(), maxAgeMs = SEARCH_HISTORY_AGE_MS) {
   const needle = normalizeSearch(query);
   if (!needle) return [];
   const terms = needle.split(/\s+/);
   const matches = index.filter(doc =>
-    (doc.timestampMs === undefined || doc.timestampMs >= now - SEARCH_HISTORY_AGE_MS) &&
+    (doc.timestampMs === undefined || withinRetention(doc.timestampMs, now, maxAgeMs)) &&
     (platform === "all" || (!doc.platform && !doc.platforms) || doc.platform === platform || doc.platforms?.includes(platform)) &&
     (channelId === "all" || doc.category === "settings" || doc.category === "help" || doc.channelId === channelId) &&
     terms.every(term => doc.searchable.includes(term))

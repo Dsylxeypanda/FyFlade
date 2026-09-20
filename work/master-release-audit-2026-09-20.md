@@ -32,6 +32,16 @@ This began as the non-destructive audit requested by the FyFlade master plan and
 - Reusable dismissible status banners now support session dismissal, persisted `Don't show again`, detached-window synchronization, and a reset-hidden-warnings control.
 - Remaining Phase 3 work includes deeper retry/reconnect history, timestamps/latency, broader contextual help, and a final settings-category grouping review.
 
+### Phase 4 in progress
+
+- Local chat history retention is selectable: 24 hours, 48 hours, 1 week, 30 days, or unlimited/manual deletion.
+- The selected retention is applied consistently by the React view, native Rust save/load/cleanup commands, profile history, and global search. Existing installs default to the previous 24-hour behavior.
+- Data & Privacy now reports per-platform/channel message counts and disk usage from the real local history files, with refresh, per-channel deletion, and confirmed clear-all controls.
+- Unlimited retention is explicitly labelled as a manual-cleanup option that may use significant disk space.
+- The retention and navigation/warning preferences are included in safe settings backups; tokens and secrets remain excluded.
+- Emote autocomplete retains the existing suggestion-only behavior: short ASCII faces such as `:D` are excluded and Enter sends the typed text; only Tab accepts a highlighted suggestion.
+- The send button now exposes the current destination with Twitch/Kick/YouTube color and a `T`, `K`, or `Y` label, complementing the existing `/t`, `/k`, and `/y` shortcuts.
+
 ## Current architecture
 
 - Desktop application: React 19 + TypeScript + Vite, hosted in Tauri 2.

@@ -7,6 +7,7 @@ type Props = {
   platform: "all" | SearchPlatform; onPlatform: (value: "all" | SearchPlatform) => void;
   channel: string; onChannel: (value: string) => void; channels: { id: string; name: string }[];
   historyStatus: "loading" | "ready" | "unavailable"; onMore: () => void;
+  historyRetentionLabel: string;
   onSettings: () => void; onInbox: () => void;
   theme: { panel: string; panelRaised: string; input: string; text: string; muted: string; border: string; borderStrong: string; accent: string };
 };
@@ -52,7 +53,7 @@ export function GlobalSearchDialog(props: Props) {
         <select aria-label={t("Søkekanal", "Search channel")} value={props.channel} onChange={e => props.onChannel(e.target.value)} style={{ ...field, flex: 1 }}><option value="all">{t("Alle kanaler", "All channels")}</option>{props.channels.map(channel => <option key={channel.id} value={channel.id}>{channel.name}</option>)}</select>
       </div>
       <div aria-live="polite" style={{ color: theme.muted, padding: "6px 12px", borderBlock: `1px solid ${theme.border}`, fontSize: 11 }}>
-        {props.historyStatus === "loading" ? t("Henter lokal historikk…", "Loading local history…") : props.historyStatus === "unavailable" ? t("Lagret historikk er ikke tilgjengelig akkurat nå. Du kan fortsatt søke i appen.", "Saved history is unavailable right now. You can still search the app.") : t("Søker lokalt. Meldinger fra siste 24 timer, opptil 5 000 nyere meldinger.", "Local search. Messages from the last 24 hours, up to 5,000 recent messages.")}
+        {props.historyStatus === "loading" ? t("Henter lokal historikk…", "Loading local history…") : props.historyStatus === "unavailable" ? t("Lagret historikk er ikke tilgjengelig akkurat nå. Du kan fortsatt søke i appen.", "Saved history is unavailable right now. You can still search the app.") : t(`Søker lokalt. Valgt periode: ${props.historyRetentionLabel}. Opptil 5 000 nyere meldinger.`, `Local search. Selected period: ${props.historyRetentionLabel}. Up to 5,000 recent messages.`)}
       </div>
       {!query.trim() && <div style={{ padding: 14 }}><p style={{ marginTop: 0, color: theme.muted }}>{t("Finn kanaler, personer, meldinger og innstillinger.", "Find channels, people, messages and settings.")}</p><div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{props.channels.slice(0, 3).map(channel => <button key={channel.id} style={button} onClick={() => onSelect({ id: channel.id, category: "channels", title: channel.name, description: "", names: [], searchable: "", target: { kind: "channel", channelId: channel.id } })}>{channel.name}</button>)}<button style={button} onClick={props.onSettings}>{t("Innstillinger", "Settings")}</button><button style={button} onClick={props.onInbox}>{t("Innboks", "Inbox")}</button></div></div>}
       {query.trim() && !results.length && <div style={{ padding: 24 }}><strong>{t("Ingen treff", "No results")}</strong><p style={{ color: theme.muted }}>{t("Prøv et annet søk eller fjern filtrene.", "Try another search or clear the filters.")}</p></div>}

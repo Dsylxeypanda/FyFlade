@@ -98,8 +98,15 @@ import { ObsOverlaySettingsPanel } from "./features/obs/ObsOverlaySettingsPanel"
 import { GlobalSearchDialog } from "./features/search/GlobalSearchDialog";
 import { QuickCommandPalette } from "./features/commands/QuickCommandPalette";
 import { buildQuickCommands, isQuickCommandShortcut, readRecentCommands, rememberCommand, type QuickCommand } from "./features/commands/quickCommands";
-import { buildGlobalSearchIndex, searchGlobalIndex, SEARCH_HISTORY_AGE_MS, type HistorySearchRow, type SearchDocument } from "./features/search/globalSearch";
-import { CHAT_HISTORY_MAX_AGE_MS } from "./lib/chatHistory";
+import { buildGlobalSearchIndex, searchGlobalIndex, type HistorySearchRow, type SearchDocument } from "./features/search/globalSearch";
+import {
+  CHAT_HISTORY_RETENTION_KEY,
+  CHAT_HISTORY_RETENTION_OPTIONS,
+  chatHistoryRetentionLabel,
+  chatHistoryRetentionMs,
+  readChatHistoryRetention,
+  type ChatHistoryRetention,
+} from "./lib/chatHistory";
 import {
   channelPlatformValue,
   CHANNEL_IDENTITIES_KEY,
@@ -1063,6 +1070,20 @@ type YouTubeLiveDiscoveryCacheEntry = {
   nextCheckAt: number;
   offlineStreak: number;
 };
+
+type ChatHistoryStorageEntry = {
+  platform: string;
+  channel: string;
+  bytes: number;
+  messageCount: number;
+};
+
+function formatStorageBytes(bytes: number) {
+  const safe = Math.max(0, Number(bytes) || 0);
+  if (safe < 1024) return `${safe} B`;
+  if (safe < 1024 * 1024) return `${(safe / 1024).toFixed(1)} KB`;
+  return `${(safe / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 function youtubeQuotaPacificDayKey(
   now: Date =
@@ -5446,6 +5467,18 @@ function App() {
     );
 
   const [
+    chatHistoryRetention,
+    setChatHistoryRetention,
+  ] = useState<ChatHistoryRetention>(
+    readChatHistoryRetention
+  );
+
+  const chatHistoryRetentionRef =
+    useRef<ChatHistoryRetention>(
+      chatHistoryRetention
+    );
+
+  const [
     appLanguagePreference,
     setAppLanguagePreference,
   ] =
@@ -6218,6 +6251,16 @@ function App() {
     setPrivacyStatus,
   ] =
     useState("");
+
+  const [
+    chatHistoryStorage,
+    setChatHistoryStorage,
+  ] = useState<ChatHistoryStorageEntry[]>([]);
+
+  const [
+    chatHistoryStorageLoading,
+    setChatHistoryStorageLoading,
+  ] = useState(false);
 
   const [
     anonymousUsageEnabled,
@@ -7279,6 +7322,27 @@ function App() {
         )
     );
 
+  const activeChatSendPlatformLabel =
+    activeChatSendPlatform === "youtube"
+      ? "YouTube"
+      : activeChatSendPlatform === "kick"
+        ? "Kick"
+        : "Twitch";
+
+  const activeChatSendPlatformShort =
+    activeChatSendPlatform === "youtube"
+      ? "Y"
+      : activeChatSendPlatform === "kick"
+        ? "K"
+        : "T";
+
+  const activeChatSendPlatformColor =
+    activeChatSendPlatform === "youtube"
+      ? "#ff0033"
+      : activeChatSendPlatform === "kick"
+        ? "#53fc18"
+        : "#9147ff";
+
   function selectChatSendPlatform(
     platform: ChatPlatform
   ) {
@@ -7346,34 +7410,39 @@ function App() {
   useEffect(() => {
     if (!globalSearchOpen) { setSearchHistory([]); setSearchSnapshot({ tabs: [], now: Date.now() }); return; }
     let cancelled = false;
+    const historyMaxAgeMs = chatHistoryRetentionMs(chatHistoryRetention);
     setSearchLimit(8);
     setSearchHistoryStatus("loading");
     const updateSnapshot = () => {
       const now = Date.now();
       setSearchSnapshot({ tabs: channelTabsRef.current, now });
-      setSearchHistory(rows => rows.some(row => row.timestampMs < now - SEARCH_HISTORY_AGE_MS) ? rows.filter(row => row.timestampMs >= now - SEARCH_HISTORY_AGE_MS) : rows);
+      if (historyMaxAgeMs > 0) {
+        setSearchHistory(rows => rows.some(row => row.timestampMs < now - historyMaxAgeMs) ? rows.filter(row => row.timestampMs >= now - historyMaxAgeMs) : rows);
+      }
     };
     updateSnapshot();
     const timer = window.setInterval(updateSnapshot, 1000);
-    void invoke<HistorySearchRow[]>("load_search_chat_history").then(rows => {
+    void invoke<HistorySearchRow[]>("load_search_chat_history", { maxAgeMs: historyMaxAgeMs }).then(rows => {
       if (!cancelled) { setSearchHistory(Array.isArray(rows) ? rows : []); setSearchHistoryStatus("ready"); }
     }).catch(() => { if (!cancelled) setSearchHistoryStatus("unavailable"); });
     return () => { cancelled = true; window.clearInterval(timer); };
-  }, [globalSearchOpen]);
+  }, [globalSearchOpen, chatHistoryRetention]);
 
   const globalSearchIndex = useMemo(() => globalSearchOpen
     ? buildGlobalSearchIndex(searchSnapshot.tabs, searchHistory, localNicknames, resolvedAppLanguage, searchSnapshot.now,
-        message => messageIsLocallyIgnored({ ...message, badges: [], fragments: [] }))
-    : [], [globalSearchOpen, searchSnapshot, searchHistory, localNicknames, localIgnores, resolvedAppLanguage]);
+        message => messageIsLocallyIgnored({ ...message, badges: [], fragments: [] }), chatHistoryRetentionMs(chatHistoryRetention))
+    : [], [globalSearchOpen, searchSnapshot, searchHistory, localNicknames, localIgnores, resolvedAppLanguage, chatHistoryRetention]);
 
-  const globalSearchResults = useMemo(() => searchGlobalIndex(globalSearchIndex, globalSearchQuery, globalSearchPlatform, globalSearchChannel, searchLimit),
-    [globalSearchIndex, globalSearchQuery, globalSearchPlatform, globalSearchChannel, searchLimit]);
+  const globalSearchResults = useMemo(() => searchGlobalIndex(globalSearchIndex, globalSearchQuery, globalSearchPlatform, globalSearchChannel, searchLimit, Date.now(), chatHistoryRetentionMs(chatHistoryRetention)),
+    [globalSearchIndex, globalSearchQuery, globalSearchPlatform, globalSearchChannel, searchLimit, chatHistoryRetention]);
 
   useEffect(() => {
     if (!searchMessageContext?.timestampMs) return;
-    const timer = window.setTimeout(() => setSearchMessageContext(null), Math.max(0, searchMessageContext.timestampMs + SEARCH_HISTORY_AGE_MS - Date.now()));
+    const historyMaxAgeMs = chatHistoryRetentionMs(chatHistoryRetention);
+    if (historyMaxAgeMs === 0) return;
+    const timer = window.setTimeout(() => setSearchMessageContext(null), Math.max(0, searchMessageContext.timestampMs + historyMaxAgeMs - Date.now()));
     return () => window.clearTimeout(timer);
-  }, [searchMessageContext]);
+  }, [searchMessageContext, chatHistoryRetention]);
 
   function openSearchSettings(section: SettingsSectionId = "general", advanced = false) {
     setGlobalSearchOpen(false);
@@ -7494,7 +7563,8 @@ function App() {
     }
     const tab = channelTabsRef.current.find(candidate => settingsId(candidate) === settingsId(target.context.channelId));
     if (target.kind === "message") {
-      if (target.message.timestampMs < Date.now() - SEARCH_HISTORY_AGE_MS) return;
+      const maxAgeMs = chatHistoryRetentionMs(chatHistoryRetention);
+      if (maxAgeMs > 0 && target.message.timestampMs < Date.now() - maxAgeMs) return;
       if (tab) activateChannel(tab.broadcasterId);
       setSearchMessageContext(result);
       return;
@@ -9169,7 +9239,12 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
         window.setTimeout(
           () => {
             void invoke(
-              "cleanup_chat_history"
+              "cleanup_chat_history",
+              {
+                maxAgeMs: chatHistoryRetentionMs(
+                  chatHistoryRetentionRef.current
+                ),
+              }
             ).catch(
               console.error
             );
@@ -9292,6 +9367,12 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
             setDismissedWarnings(
               readDismissedWarnings()
             );
+          } else if (
+            event.key === CHAT_HISTORY_RETENTION_KEY
+          ) {
+            const retention = readChatHistoryRetention();
+            chatHistoryRetentionRef.current = retention;
+            setChatHistoryRetention(retention);
           }
         };
 
@@ -9307,6 +9388,15 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
         );
     },
     []
+  );
+
+  useEffect(
+    () => {
+      if (showSettings && settingsSection === "privacy") {
+        void refreshChatHistoryStorage();
+      }
+    },
+    [showSettings, settingsSection]
   );
 
   useEffect(
@@ -10265,9 +10355,15 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       const timer =
         window.setInterval(
           () => {
-            const cutoff =
-              Date.now() -
-              CHAT_HISTORY_MAX_AGE_MS;
+            const maxAgeMs = chatHistoryRetentionMs(
+              chatHistoryRetentionRef.current
+            );
+
+            if (maxAgeMs === 0) {
+              return;
+            }
+
+            const cutoff = Date.now() - maxAgeMs;
 
             updateTabs(
               (
@@ -10308,7 +10404,12 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
         window.setInterval(
           () => {
             void invoke(
-              "cleanup_chat_history"
+              "cleanup_chat_history",
+              {
+                maxAgeMs: chatHistoryRetentionMs(
+                  chatHistoryRetentionRef.current
+                ),
+              }
             ).catch(
               console.error
             );
@@ -11568,7 +11669,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     key: string
   ) {
     return (
-      (key.startsWith("chatnest.") || key === CHANNEL_SETTINGS_KEY || key === CHANNEL_IDENTITIES_KEY || key === PROFILES_KEY) &&
+      (key.startsWith("chatnest.") || key === CHANNEL_SETTINGS_KEY || key === CHANNEL_IDENTITIES_KEY || key === PROFILES_KEY || key === CHAT_HISTORY_RETENTION_KEY || key === SETTINGS_NAV_ORDER_KEY || key === DISMISSED_WARNINGS_KEY) &&
       !key.startsWith("chatnest.internal.") &&
       !/(oauth|secret|token|client.?id|webhook|banids|quota)/i.test(
         key
@@ -13786,6 +13887,20 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       SAVE_LIVE_CHAT_HISTORY_KEY,
       enabled
     );
+  }
+
+  function setAndSaveChatHistoryRetention(
+    retention: ChatHistoryRetention
+  ) {
+    chatHistoryRetentionRef.current = retention;
+    setChatHistoryRetention(retention);
+    localStorage.setItem(
+      CHAT_HISTORY_RETENTION_KEY,
+      retention
+    );
+
+    const maxAgeMs = chatHistoryRetentionMs(retention);
+    void invoke("cleanup_chat_history", { maxAgeMs }).catch(console.error);
   }
 
   async function openKickSetup() {
@@ -21896,6 +22011,39 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     }
   }
 
+  async function refreshChatHistoryStorage() {
+    setChatHistoryStorageLoading(true);
+    try {
+      const entries = await invoke<ChatHistoryStorageEntry[]>(
+        "list_chat_history_storage"
+      );
+      setChatHistoryStorage(Array.isArray(entries) ? entries : []);
+    } catch {
+      setChatHistoryStorage([]);
+    } finally {
+      setChatHistoryStorageLoading(false);
+    }
+  }
+
+  async function clearAllChatHistory() {
+    if (!window.confirm(ui("Vil du slette all lokalt lagret chat-historikk for alle kanaler? Dette kan ikke angres.", "Delete all locally stored chat history for every channel? This cannot be undone."))) {
+      return;
+    }
+
+    try {
+      await invoke("clear_all_chat_history");
+      updateTabs((tabs) => tabs.map((tab) => ({
+        ...tab,
+        messages: tab.messages.filter((message) => message.kind === "system"),
+      })));
+      setSearchHistory([]);
+      setChatHistoryStorage([]);
+      setPrivacyStatus(ui("✓ All lokal chat-historikk er slettet.", "✓ All local chat history was deleted."));
+    } catch {
+      setPrivacyStatus(ui("Kunne ikke slette all chat-historikk.", "Could not delete all chat history."));
+    }
+  }
+
   async function clearChannelHistory(
     tab:
       ChannelTab
@@ -21906,7 +22054,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
     if (
       !window.confirm(
-        ui(`Vil du tømme den lokale 24-timers chatloggen for ${tab.displayName}?`, `Do you want to clear the local 24-hour chat history for ${tab.displayName}?`)
+        ui(`Vil du tømme den lokale chatloggen for ${tab.displayName}?`, `Do you want to clear the local chat history for ${tab.displayName}?`)
       )
     ) {
       return;
@@ -22008,6 +22156,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       setPrivacyStatus(
         ui(`✓ Chatloggen for ${tab.displayName} er slettet.`, `✓ Chat history for ${tab.displayName} was deleted.`)
       );
+      void refreshChatHistoryStorage();
     } catch {
       setTwitchError(
         ui("Kunne ikke tømme chatloggen.", "Could not clear the chat history.")
@@ -22521,12 +22670,20 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
             channel:
               channelLogin,
+
+            maxAgeMs:
+              chatHistoryRetentionMs(
+                chatHistoryRetentionRef.current
+              ),
           }
         );
 
-      const cutoff =
-        Date.now() -
-        CHAT_HISTORY_MAX_AGE_MS;
+      const maxAgeMs = chatHistoryRetentionMs(
+        chatHistoryRetentionRef.current
+      );
+      const cutoff = maxAgeMs === 0
+        ? 0
+        : Date.now() - maxAgeMs;
 
       const parsed:
         TwitchChatMessage[] =
@@ -22751,6 +22908,11 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
         payloadJson:
           JSON.stringify(
             message
+          ),
+
+        maxAgeMs:
+          chatHistoryRetentionMs(
+            chatHistoryRetentionRef.current
           ),
       }
     ).catch(
@@ -41239,6 +41401,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
         channel={globalSearchChannel} onChannel={setGlobalSearchChannel}
         channels={channelTabs.map(tab => ({ id: tab.broadcasterId, name: tab.displayName }))}
         historyStatus={searchHistoryStatus} onMore={() => setSearchLimit(value => Math.min(80, value + 8))}
+        historyRetentionLabel={chatHistoryRetentionLabel(chatHistoryRetention, resolvedAppLanguage === "no")}
         onSettings={() => openSearchSettings()}
         onInbox={() => { setGlobalSearchOpen(false); setMentionInboxOpen(true); }}
         theme={theme}
@@ -42661,7 +42824,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
           }
           style={{
             minWidth:
-              66,
+              88,
 
             height:
               36,
@@ -42670,9 +42833,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
               activeTab &&
               activeChatSendReady &&
               chatInput.trim()
-                ? unifiedThemeEnabled
-                  ? unifiedThemeColor
-                  : theme.accent
+                ? activeChatSendPlatformColor
                 : unifiedThemeEnabled
                   ? unifiedThemeColor
                   : appearanceMode ===
@@ -42685,14 +42846,12 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
               activeChatSendReady &&
               chatInput.trim()
                 ? readableTextColor(
-                    unifiedThemeEnabled
-                      ? unifiedThemeColor
-                      : theme.accent
+                    activeChatSendPlatformColor
                   )
                 : theme.subtle,
 
             border:
-              `1px solid ${theme.borderStrong}`,
+              `1px solid ${activeChatSendReady ? activeChatSendPlatformColor : theme.borderStrong}`,
 
             borderRadius:
               5,
@@ -42707,8 +42866,8 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
           {sendingMessage
             ? "..."
             : replyingTo
-              ? ui("Svar", "Reply")
-              : ui("Send", "Send")}
+              ? `${ui("Svar", "Reply")} · ${activeChatSendPlatformShort}`
+              : `${ui("Send", "Send")} · ${activeChatSendPlatformShort}`}
         </button>
       </div>
       )}
@@ -45892,8 +46051,8 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                     <HelpTip
                       label={ui("Forklar lokal chatlagring", "Explain local chat storage")}
                       text={ui(
-                        "Bare meldinger FyFlade mottar mens sendingen er live lagres. De blir på denne PC-en og fjernes automatisk etter 24 timer.",
-                        "Only messages FyFlade receives while the stream is live are saved. They stay on this PC and are automatically removed after 24 hours."
+                        "Bare meldinger FyFlade mottar mens sendingen er live lagres. De blir på denne PC-en og følger lagringsperioden du velger under.",
+                        "Only messages FyFlade receives while the stream is live are saved. They stay on this PC and follow the retention period selected below."
                       )}
                       colors={{ panel: theme.panelRaised, text: theme.text, muted: theme.muted, border: theme.borderStrong }}
                     />
@@ -45912,8 +46071,8 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                     }}
                   >
                     {ui(
-                      "Lagrer alle mottatte meldinger mens en kanal er live. Profilkortet viser alt denne brukeren skrev i livesendingen. Historikken lagres bare på denne PC-en og ryddes automatisk etter 24 timer.",
-                      "Saves every received message while a channel is live. The profile card shows everything this user wrote during the stream. History stays only on this PC and is automatically cleared after 24 hours."
+                      `Lagrer alle mottatte meldinger mens en kanal er live. Historikken blir bare på denne PC-en. Valgt lagringsperiode: ${chatHistoryRetentionLabel(chatHistoryRetention, true)}.`,
+                      `Saves every received message while a channel is live. History stays only on this PC. Selected retention: ${chatHistoryRetentionLabel(chatHistoryRetention, false)}.`
                     )}
                   </div>
 
@@ -46002,6 +46161,30 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                   />
                 </button>
               </div>
+
+              {saveLiveChatHistoryEnabled && (
+                <label style={{ marginTop: 9, display: "grid", gridTemplateColumns: "minmax(0, 1fr) 190px", alignItems: "center", gap: 10, padding: "9px 11px", border: `1px solid ${theme.border}`, borderRadius: 6, background: theme.panel }}>
+                  <span>
+                    <strong style={{ display: "block", fontSize: 10.5 }}>{ui("Lagringsperiode", "Retention period")}</strong>
+                    <span style={{ display: "block", marginTop: 2, color: theme.subtle, fontSize: 9, lineHeight: "13px" }}>
+                      {chatHistoryRetention === "unlimited"
+                        ? ui("Lagres til du sletter historikken manuelt. Dette kan bruke mye diskplass.", "Stored until you delete history manually. This can use significant disk space.")
+                        : ui("Eldre meldinger ryddes automatisk lokalt.", "Older messages are removed locally automatically.")}
+                    </span>
+                  </span>
+                  <select
+                    value={chatHistoryRetention}
+                    onChange={(event) => setAndSaveChatHistoryRetention(event.target.value as ChatHistoryRetention)}
+                    style={{ width: "100%", height: 30, border: `1px solid ${theme.borderStrong}`, borderRadius: 4, background: theme.input, color: theme.text, fontFamily: "inherit", fontSize: 10 }}
+                  >
+                    {CHAT_HISTORY_RETENTION_OPTIONS.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {resolvedAppLanguage === "no" ? option.labelNo : option.labelEn}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
 
               <label
                 style={{
@@ -46940,9 +47123,43 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                       <strong style={{ fontSize: 12 }}>{ui("Lokal chatlogg", "Local chat history")}</strong>
                       <div style={{ marginTop: 4, color: theme.muted, fontSize: 9.5, lineHeight: "15px" }}>
                         {ui(
-                          "Når «Lagre chat fra livesendinger» er aktivert, beholdes meldinger lokalt i opptil 24 timer. Velg en kanal under for å slette den lagrede loggen og meldingene som vises nå.",
-                          "When “Save live chat” is enabled, messages are kept locally for up to 24 hours. Choose a channel below to delete its saved log and currently displayed messages."
+                          `Når «Lagre chat fra livesendinger» er aktivert, beholdes meldinger lokalt etter valgt periode (${chatHistoryRetentionLabel(chatHistoryRetention, true)}). Velg en kanal under for å slette den lagrede loggen og meldingene som vises nå.`,
+                          `When “Save live chat” is enabled, messages are kept locally for the selected period (${chatHistoryRetentionLabel(chatHistoryRetention, false)}). Choose a channel below to delete its saved log and currently displayed messages.`
                         )}
+                      </div>
+                      <div style={{ marginTop: 9, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6 }}>
+                        {[
+                          [ui("Lagringsperiode", "Retention"), chatHistoryRetentionLabel(chatHistoryRetention, resolvedAppLanguage === "no")],
+                          [ui("Lagrede meldinger", "Stored messages"), chatHistoryStorage.reduce((total, entry) => total + entry.messageCount, 0).toLocaleString()],
+                          [ui("Diskbruk", "Disk usage"), formatStorageBytes(chatHistoryStorage.reduce((total, entry) => total + entry.bytes, 0))],
+                        ].map(([label, value]) => (
+                          <div key={String(label)} style={{ padding: "7px 8px", border: `1px solid ${theme.border}`, borderRadius: 5, background: theme.panelRaised }}>
+                            <div style={{ color: theme.subtle, fontSize: 8.5 }}>{label}</div>
+                            <div style={{ marginTop: 2, color: theme.text, fontSize: 11, fontWeight: 800 }}>{value}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {chatHistoryStorageLoading ? (
+                        <div style={{ marginTop: 8, color: theme.subtle, fontSize: 9 }}>{ui("Leser lokal lagring…", "Reading local storage…")}</div>
+                      ) : chatHistoryStorage.length > 0 && (
+                        <div style={{ marginTop: 8, maxHeight: 130, overflowY: "auto", display: "grid", gap: 4 }}>
+                          {chatHistoryStorage.map((entry) => (
+                            <div key={`${entry.platform}:${entry.channel}`} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", border: `1px solid ${theme.border}`, borderRadius: 4, color: theme.muted, fontSize: 9 }}>
+                              <strong style={{ width: 52, color: theme.text, textTransform: "capitalize" }}>{entry.platform}</strong>
+                              <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.channel}</span>
+                              <span>{entry.messageCount.toLocaleString()} {ui("meldinger", "messages")}</span>
+                              <span style={{ width: 58, textAlign: "right" }}>{formatStorageBytes(entry.bytes)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div style={{ marginTop: 8, display: "flex", gap: 7 }}>
+                        <button onClick={() => void refreshChatHistoryStorage()} style={smallButton}>
+                          {ui("Oppdater oversikt", "Refresh overview")}
+                        </button>
+                        <button disabled={chatHistoryStorage.length === 0} onClick={() => void clearAllChatHistory()} style={{ ...smallButton, color: "#ff827a", opacity: chatHistoryStorage.length === 0 ? .5 : 1 }}>
+                          {ui("Slett all chat-historikk", "Delete all chat history")}
+                        </button>
                       </div>
                       <div style={{ marginTop: 9, display: "grid", gap: 6 }}>
                         {channelTabs.length === 0 ? (
