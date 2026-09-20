@@ -96,6 +96,14 @@ function errorResponse(message: string, status = 400) {
   return jsonResponse({ error: message }, status);
 }
 
+function safeErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || "Unknown error");
+  return message
+    .replace(/(access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|authorization|bearer)(\s*[=:]\s*|\s+)[^\s,;}\]]+/gi, "$1$2[redacted]")
+    .replace(/\b[A-Za-z0-9_-]{48,}\b/g, "[redacted]")
+    .slice(0, 500);
+}
+
 function configured(env: Env) {
   return Boolean(
     env.KICK_CLIENT_ID?.trim() &&
@@ -619,9 +627,9 @@ export default {
     try {
       return await handleWorkerRequest(request, env);
     } catch (error) {
-      console.error("ChatNest Kick relay request failed", {
+      console.error("FyFlade Kick relay request failed", {
         path: new URL(request.url).pathname,
-        message: error instanceof Error ? error.message : String(error),
+        message: safeErrorMessage(error),
       });
       return errorResponse("Internal service error.", 500);
     }

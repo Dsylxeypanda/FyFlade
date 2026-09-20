@@ -68,6 +68,14 @@ This began as the non-destructive audit requested by the FyFlade master plan and
 - The startup intro now uses established FyFlade branding without trailing dots and completes in about 1.2 seconds with subtle fade/scale/blur. Reduced-motion mode uses a short static presentation with no movement.
 - Text-based mention matching is now platform-specific: Twitch messages match the authenticated Twitch identity, Kick messages the Kick identity, and YouTube messages the YouTube identity. Structured Twitch mention IDs remain preferred when available.
 
+### Phase 8 in progress
+
+- Sensitive OAuth, refresh-token, and relay failure paths now pass error values through bounded redaction before writing diagnostics. Long credential-like values and named token/secret fields are replaced with `[redacted]`.
+- The Cloudflare relay log uses FyFlade branding and logs only the request path plus a redacted, length-limited error message; authorization headers and request bodies are not logged.
+- Twitch channel metadata cache is capped at 250 entries, YouTube live-discovery cache prunes from 300 to 200 entries, and 7TV cosmetics cache prunes from 1,000 to 750 entries by age.
+- Data & Privacy includes a safe temporary-cache reset for channel metadata, emotes, 7TV cosmetics, and the YouTube profile cache. Accounts, settings, profiles, and chat history are explicitly preserved.
+- The existing user-triggered translation action now uses a provider-neutral request contract and requires one-time disclosure before sending selected message text to Google Translate. No automatic/live provider is enabled, no translation is stored, and the foundation explicitly requires privacy, cost, and bounded-cache rules before future activation.
+
 ## Current architecture
 
 - Desktop application: React 19 + TypeScript + Vite, hosted in Tauri 2.

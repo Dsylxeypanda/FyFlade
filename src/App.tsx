@@ -39,6 +39,12 @@ import {
   writeSettingDebounced,
 } from "./lib/localSettings";
 import { humanErrorMessage } from "./lib/humanError";
+import { safeDiagnosticError } from "./lib/safeDiagnostics";
+import {
+  googleWebTranslationProvider,
+  hasExternalTranslationConsent,
+  rememberExternalTranslationConsent,
+} from "./features/translation/translationProvider";
 import {
   createLocalIgnore,
   isUserLocallyIgnored,
@@ -11102,13 +11108,14 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
         ).values()
       );
 
-    channelCacheRef.current =
-      deduped;
+    const bounded = deduped.slice(-250);
+
+    channelCacheRef.current = bounded;
 
     localStorage.setItem(
       CHANNEL_CACHE_KEY,
       JSON.stringify(
-        deduped
+        bounded
       )
     );
   }
@@ -13735,6 +13742,33 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     );
   }
 
+  function clearTemporaryCaches() {
+    channelCacheRef.current = [];
+    youtubeLiveDiscoveryCacheRef.current.clear();
+    youtubeLiveDiscoveryInFlightRef.current.clear();
+    kickBadgeCatalogCacheRef.current = {};
+    sevenTvGlobalEmotesRef.current = {};
+    sevenTvChannelEmotesRef.current = {};
+    bttvGlobalEmotesRef.current = {};
+    bttvChannelEmotesRef.current = {};
+    thirdPartyEmoteLoadedAtRef.current = {};
+    sevenTvChannelSetIdsRef.current = {};
+    sevenTvSetChannelIdsRef.current = {};
+    sevenTvCosmeticsCacheRef.current = {};
+    sevenTvCosmeticsQueueRef.current = {};
+    sevenTvCosmeticsLoadingRef.current.clear();
+    localStorage.removeItem(CHANNEL_CACHE_KEY);
+    localStorage.removeItem(YOUTUBE_PROFILE_CACHE_KEY);
+    bumpThirdPartyEmotes();
+    setSevenTvCosmeticsVersion((current) => current + 1);
+    setPrivacyStatus(
+      ui(
+        "✓ Midlertidig kanal-, emote- og profilcache er tømt. Kontoer, innstillinger og chat-historikk er beholdt.",
+        "✓ Temporary channel, emote, and profile caches were cleared. Accounts, settings, and chat history were kept."
+      )
+    );
+  }
+
   async function sendAnonymousDailyUsage() {
     if (!anonymousUsageEnabled) {
       return;
@@ -14164,7 +14198,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     ) {
       console.error(
         "Kunne ikke lese lagret Kick Client Secret:",
-        error
+        safeDiagnosticError(error)
       );
     }
 
@@ -14907,7 +14941,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       (error) => {
         console.error(
           "Kick relay:",
-          error
+          safeDiagnosticError(error)
         );
 
         scheduleKickRelayReconnect(
@@ -15257,7 +15291,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
       console.error(
         "Kick-login feilet:",
-        error
+        safeDiagnosticError(error)
       );
 
       setKickLoginError(
@@ -15376,7 +15410,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     ) {
       console.error(
         "Kick auto-login feilet:",
-        error
+        safeDiagnosticError(error)
       );
 
       setKickConnected(
@@ -18570,7 +18604,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     ) {
       console.warn(
         "YouTube-kontoen er godkjent, men kanalprofilen kunne ikke hentes:",
-        profileError
+        safeDiagnosticError(profileError)
       );
 
       channel =
@@ -18939,7 +18973,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       ) {
         console.warn(
           "YouTube access token er gyldig, men kanalprofilen kunne ikke hentes (for eksempel quotaExceeded):",
-          profileError
+          safeDiagnosticError(profileError)
         );
 
         channel =
@@ -18965,7 +18999,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     ) {
       console.error(
         "YouTube auto-login feilet:",
-        error
+        safeDiagnosticError(error)
       );
 
       setYoutubeConnected(
@@ -19685,6 +19719,12 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     const cacheKey =
       channel.channelId || channel.uploadsPlaylistId;
     const now = Date.now();
+    if (youtubeLiveDiscoveryCacheRef.current.size > 300) {
+      const oldest = Array.from(youtubeLiveDiscoveryCacheRef.current.entries())
+        .sort((left, right) => left[1].checkedAt - right[1].checkedAt)
+        .slice(0, youtubeLiveDiscoveryCacheRef.current.size - 200);
+      oldest.forEach(([key]) => youtubeLiveDiscoveryCacheRef.current.delete(key));
+    }
     const cached =
       youtubeLiveDiscoveryCacheRef.current.get(cacheKey);
 
@@ -22151,10 +22191,20 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       resolvedAppLanguage === "no"
         ? "no"
         : "en";
-    const url =
-      `https://translate.google.com/?sl=auto&tl=${targetLanguage}&text=${encodeURIComponent(
-        message.text
-      )}&op=translate`;
+    if (!hasExternalTranslationConsent()) {
+      const approved = window.confirm(
+        ui(
+          "Meldingsteksten åpnes hos Google Translate. FyFlade lagrer ikke oversettelsen. Fortsette?",
+          "The message text will be opened in Google Translate. FyFlade does not store the translation. Continue?"
+        )
+      );
+      if (!approved) return;
+      rememberExternalTranslationConsent();
+    }
+    const url = googleWebTranslationProvider.buildUrl({
+      text: message.text,
+      targetLanguage,
+    });
 
     try {
       await openUrl(url);
@@ -23819,6 +23869,14 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
           };
         }
       );
+
+      const cosmeticsEntries = Object.entries(sevenTvCosmeticsCacheRef.current);
+      if (cosmeticsEntries.length > 1000) {
+        cosmeticsEntries
+          .sort((left, right) => left[1].fetchedAt - right[1].fetchedAt)
+          .slice(0, cosmeticsEntries.length - 750)
+          .forEach(([key]) => delete sevenTvCosmeticsCacheRef.current[key]);
+      }
 
       setSevenTvCosmeticsStatus(
         "ready"
@@ -29945,7 +30003,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     ) {
       console.error(
         "Kunne ikke lagre refresh token:",
-        error
+        safeDiagnosticError(error)
       );
     }
 
@@ -47763,6 +47821,19 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                           {ui("Fjern alle ignoreringer", "Remove all ignores")}
                         </button>
                       </div>
+                    </div>
+
+                    <div style={{ marginTop: 10, padding: 12, border: `1px solid ${theme.border}`, borderRadius: 7, background: theme.panel }}>
+                      <strong style={{ fontSize: 12 }}>{ui("Midlertidig cache", "Temporary cache")}</strong>
+                      <div style={{ marginTop: 4, color: theme.muted, fontSize: 9.5, lineHeight: "15px" }}>
+                        {ui(
+                          "Tømmer midlertidige kanalprofiler, emoter og 7TV-data. Kontoer, innstillinger, profiler og chat-historikk påvirkes ikke; nødvendige data lastes inn igjen.",
+                          "Clears temporary channel profiles, emotes, and 7TV data. Accounts, settings, profiles, and chat history are not affected; required data is downloaded again."
+                        )}
+                      </div>
+                      <button onClick={clearTemporaryCaches} style={{ ...smallButton, marginTop: 9 }}>
+                        {ui("Tøm midlertidig cache", "Clear temporary cache")}
+                      </button>
                     </div>
 
                     <div style={{ marginTop: 10, padding: 11, border: `1px solid ${theme.border}`, borderRadius: 7, background: theme.panel, color: theme.muted, fontSize: 9.5, lineHeight: "15px" }}>
