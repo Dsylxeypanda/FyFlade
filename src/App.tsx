@@ -8429,8 +8429,11 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       connectingKick ||
       hasSavedKickSession)
       ? "offline"
-      : connectingKick
-        ? "connecting"
+        : connectingKick
+          ? "connecting"
+        : FYFLATE_WINDOW_MODE === "settings" &&
+            kickConnected
+          ? "connected"
         : kickConnected &&
             (kickRelaySocketStatus ===
               "ready" ||
@@ -8474,6 +8477,9 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     platform: "Twitch" | "Kick" | "YouTube"
   ) {
     if (state === "connected") {
+      if (FYFLATE_WINDOW_MODE === "settings") {
+        return ui("Kontoen er tilkoblet", "Account is connected");
+      }
       return platform === "YouTube"
         ? ui("Kontoen er klar", "Account is ready")
         : ui("Chatten er tilkoblet", "Chat is connected");
