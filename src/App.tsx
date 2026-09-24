@@ -36123,6 +36123,8 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
               true,
             resizable:
               true,
+            decorations:
+              !isSettings,
             transparent:
               false,
             backgroundColor:
@@ -36244,6 +36246,15 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     }
 
     event.preventDefault();
+
+    if (
+      FYFLATE_WINDOW_MODE ===
+      windowKind
+    ) {
+      void WebviewWindow.getCurrent()
+        .startDragging();
+      return;
+    }
 
     const panel =
       event.currentTarget
