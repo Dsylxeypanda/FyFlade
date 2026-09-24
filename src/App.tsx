@@ -90,10 +90,6 @@ import {
 import { HelpTip } from "./features/settings/HelpTip";
 import {
   DEFAULT_SETTINGS_NAV_ORDER,
-  moveSettingsSection,
-  readSettingsNavOrder,
-  SETTINGS_NAV_ORDER_KEY,
-  writeSettingsNavOrder,
 } from "./features/settings/settingsNavigation";
 import { UndoToast } from "./features/undo/UndoToast";
 import { useProfiles } from "./features/profiles/useProfiles";
@@ -6227,18 +6223,6 @@ function App() {
     );
 
   const [
-    settingsNavOrder,
-    setSettingsNavOrder,
-  ] = useState<SettingsSectionId[]>(
-    readSettingsNavOrder
-  );
-
-  const [
-    draggedSettingsSection,
-    setDraggedSettingsSection,
-  ] = useState<SettingsSectionId | null>(null);
-
-  const [
     settingsSearchQuery,
     setSettingsSearchQuery,
   ] = useState("");
@@ -7593,24 +7577,10 @@ function App() {
   }, [anonymousUsageEnabled]);
 
   const [layoutSession, setLayoutSession] = useState<{ profileId: string; draft: WorkspaceLayout; history: WorkspaceLayout[] } | null>(null);
-  const [confirmLayoutReset, setConfirmLayoutReset] = useState(false);
   const paneBottomRefs = useRef(new Map<string, HTMLDivElement>());
   const activeProfile = profiles.store.profiles.find(p => p.id === profiles.store.activeId)!;
   const workspaceLayout = !FYFLATE_WINDOW_MODE ? layoutSession?.draft || activeProfile.layout : null;
   useEffect(() => { setLayoutSession(null); }, [profiles.store.activeId]);
-  function startLayoutEdit() {
-    if (FYFLATE_WINDOW_MODE) { writeSetting("fyflate.layout.editRequest.v1", `${Date.now()}`); return; }
-    setShowSettings(false);
-    setLayoutSession({ profileId: activeProfile.id, draft: activeProfile.layout || defaultLayout(activeProfile.view), history: [] });
-  }
-  const layoutEditRequest = useRef(startLayoutEdit);
-  layoutEditRequest.current = startLayoutEdit;
-  useEffect(() => {
-    if (FYFLATE_WINDOW_MODE) return;
-    const listener = (event: StorageEvent) => { if (event.key === "fyflate.layout.editRequest.v1") layoutEditRequest.current(); };
-    window.addEventListener("storage", listener);
-    return () => window.removeEventListener("storage", listener);
-  }, []);
   function updateLayoutDraft(next: WorkspaceLayout) {
     setLayoutSession(current => !current || JSON.stringify(current.draft) === JSON.stringify(next) ? current : { ...current, draft: next, history: [...current.history, current.draft].slice(-30) });
   }
@@ -7649,12 +7619,7 @@ function App() {
     setQuickCommandsOpen(false);
     setRecentCommands(current => rememberCommand(current, command.id));
     const action = command.action;
-    if (action.kind === "edit-layout") {
-      startLayoutEdit();
-    } else if (action.kind === "reset-layout") {
-      openSearchSettings("profiles");
-      setConfirmLayoutReset(true);
-    } else if (action.kind === "profile") {
+    if (action.kind === "profile") {
       switchProfile(action.profileId);
     } else if (action.kind === "settings") {
       openSearchSettings(action.section);
@@ -9510,12 +9475,6 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                 SHOW_ADVANCED_SETTINGS_KEY,
                 false
               )
-            );
-          } else if (
-            event.key === SETTINGS_NAV_ORDER_KEY
-          ) {
-            setSettingsNavOrder(
-              readSettingsNavOrder()
             );
           } else if (
             event.key === DISMISSED_WARNINGS_KEY
@@ -11858,7 +11817,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     key: string
   ) {
     return (
-      (key.startsWith("chatnest.") || key === CHANNEL_SETTINGS_KEY || key === CHANNEL_IDENTITIES_KEY || key === PROFILES_KEY || key === CHAT_HISTORY_RETENTION_KEY || key === SETTINGS_NAV_ORDER_KEY || key === DISMISSED_WARNINGS_KEY || key === TTS_SETTINGS_KEY) &&
+      (key.startsWith("chatnest.") || key === CHANNEL_SETTINGS_KEY || key === CHANNEL_IDENTITIES_KEY || key === PROFILES_KEY || key === CHAT_HISTORY_RETENTION_KEY || key === DISMISSED_WARNINGS_KEY || key === TTS_SETTINGS_KEY) &&
       !key.startsWith("chatnest.internal.") &&
       !/(oauth|secret|token|client.?id|webhook|banids|quota)/i.test(
         key
@@ -38215,7 +38174,6 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     return <>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "4px 8px", background: theme.panel, color: theme.muted, fontSize: 11 }}>
         <button style={smallButton} onClick={() => openSearchSettings("profiles")}>{ui("Profiler / innstillinger", "Profiles / Settings")}</button>
-        <button style={smallButton} onClick={startLayoutEdit}>{ui("Rediger layout", "Edit layout")}</button>
         <span>{activeTab?.displayName || ui("Ingen kanal", "No channel")} · {ui("Skriver til", "Sending to")}: {activeChatSendPlatform} · /t /k /y</span>
       </div>
       <DockWorkspace layout={visible} editing={!!layoutSession} name={profileName(activeProfile, resolvedAppLanguage === "no")} no={resolvedAppLanguage === "no"} colors={theme}
@@ -44764,52 +44722,21 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
             <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
               <div aria-label={ui("Innstillingssider", "Settings pages")} style={{ width: 168, minWidth: 168, minHeight: 0, overflowY: "auto", padding: "8px 6px", background: theme.panel, borderRight: `1px solid ${theme.border}`, boxSizing: "border-box", display: "flex", flexDirection: "column" }}>
-                {settingsNavOrder.map((id) => {
+                {DEFAULT_SETTINGS_NAV_ORDER.map((id) => {
                   const active = settingsSection === id;
                   const item = settingsNavMeta[id];
                   return (
                     <button
                       key={id}
-                      draggable
                       aria-current={active ? "page" : undefined}
-                      title={ui("Dra for å endre rekkefølge", "Drag to reorder")}
-                      onDragStart={(event) => {
-                        setDraggedSettingsSection(id);
-                        event.dataTransfer.effectAllowed = "move";
-                        event.dataTransfer.setData("text/fyflade-settings-section", id);
-                      }}
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        event.dataTransfer.dropEffect = "move";
-                      }}
-                      onDrop={(event) => {
-                        event.preventDefault();
-                        const source = (draggedSettingsSection || event.dataTransfer.getData("text/fyflade-settings-section")) as SettingsSectionId;
-                        const next = moveSettingsSection(settingsNavOrder, source, id);
-                        setSettingsNavOrder(next);
-                        writeSettingsNavOrder(next);
-                        setDraggedSettingsSection(null);
-                      }}
-                      onDragEnd={() => setDraggedSettingsSection(null)}
                       onClick={() => { setSettingsSection(id); setSettingsSearchQuery(""); setShowAddAccount(false); setShowKickSetup(false); setAccountNotice(""); }}
-                      style={{ width: "100%", minHeight: 34, flexShrink: 0, display: "flex", alignItems: "center", gap: 7, padding: "0 7px", border: "none", borderRadius: 4, background: active ? (appearanceMode === "light" ? "#e6e8ec" : "#292b31") : draggedSettingsSection === id ? hexColorWithAlpha(theme.accent, .12) : "transparent", color: active ? theme.text : theme.muted, cursor: draggedSettingsSection ? "grabbing" : "grab", textAlign: "left", fontFamily: "inherit", fontSize: 11, opacity: draggedSettingsSection === id ? .6 : 1 }}
+                      style={{ width: "100%", minHeight: 34, flexShrink: 0, display: "flex", alignItems: "center", gap: 7, padding: "0 7px", border: "none", borderRadius: 4, background: active ? (appearanceMode === "light" ? "#e6e8ec" : "#292b31") : "transparent", color: active ? theme.text : theme.muted, cursor: "pointer", textAlign: "left", fontFamily: "inherit", fontSize: 11 }}
                     >
-                      <span aria-hidden="true" style={{ width: 9, color: theme.subtle, fontSize: 9 }}>⋮⋮</span>
                       <span style={{ width: 16, textAlign: "center", color: active ? "#a970ff" : theme.subtle }}>{item.icon}</span>
                       <span>{item.label}</span>
                     </button>
                   );
                 })}
-                <button
-                  onClick={() => {
-                    const next = [...DEFAULT_SETTINGS_NAV_ORDER];
-                    setSettingsNavOrder(next);
-                    writeSettingsNavOrder(next);
-                  }}
-                  style={{ margin: "6px 7px 0", padding: "5px 6px", border: "none", background: "transparent", color: theme.subtle, cursor: "pointer", fontFamily: "inherit", fontSize: 8.5, textAlign: "left" }}
-                >
-                  {ui("Tilbakestill rekkefølge", "Reset order")}
-                </button>
                 <div
                   style={{
                     marginTop: "auto",
@@ -44888,7 +44815,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                     </div>
                   </div>
                 )}
-                {!settingsSearchActive && settingsSection === "profiles" && <div data-tutorial-id="settings-profiles"><ProfilesPanel colors={theme} store={profiles.store} no={resolvedAppLanguage === "no"} onSwitch={switchProfile} onCreate={profiles.create} onRename={profiles.rename} onDelete={id => { const undo = profiles.remove(id); if (undo) showUndoAction(ui("Profilen er slettet", "Profile deleted"), undo); }} onEditLayout={startLayoutEdit} confirmLayoutReset={confirmLayoutReset} setConfirmLayoutReset={setConfirmLayoutReset} onResetLayout={() => { const undo = profiles.setLayout(activeProfile.id, null); setLayoutSession(null); if (undo) showUndoAction(ui("Profillayouten er tilbakestilt", "Profile layout reset"), undo); }} /></div>}
+                {!settingsSearchActive && settingsSection === "profiles" && <div data-tutorial-id="settings-profiles"><ProfilesPanel colors={theme} store={profiles.store} no={resolvedAppLanguage === "no"} onSwitch={switchProfile} onCreate={profiles.create} onRename={profiles.rename} onDelete={id => { const undo = profiles.remove(id); if (undo) showUndoAction(ui("Profilen er slettet", "Profile deleted"), undo); }} /></div>}
                 {!settingsSearchActive && settingsSection === "general" && (
                   <div data-tutorial-id="settings-general" style={{ padding: 16 }}>
                     <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 6 }}>
@@ -48039,27 +47966,6 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                 {ui("Utseende", "Appearance")}
               </div>
 
-              <PartyModePanel
-                language={resolvedAppLanguage}
-                settings={partyModeSettings}
-                reducedMotion={reducedMotionEnabled}
-                captureStatus={partyMode.captureStatus}
-                captureError={partyMode.captureError}
-                colors={{
-                  panelRaised: theme.panelRaised,
-                  input: theme.input,
-                  text: theme.text,
-                  muted: theme.muted,
-                  border: theme.border,
-                  borderStrong: theme.borderStrong,
-                  accent: theme.accent,
-                  accentText: readableTextColor(theme.accent),
-                }}
-                onUpdate={updatePartyModeSettings}
-                onStartAudio={() => void partyMode.startAudioCapture()}
-                onStopAudio={partyMode.stopAudioCapture}
-              />
-
               <div
                 style={{
                   display: "flex",
@@ -48522,6 +48428,35 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                   </div>
                 )}
               </div>
+
+              <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${theme.border}` }}>
+                <div style={{ color: theme.text, fontSize: 14, fontWeight: 900 }}>
+                  {ui("Bare for moro", "Just for fun")}
+                </div>
+                <div style={{ marginTop: 3, color: theme.muted, fontSize: 10, lineHeight: "15px" }}>
+                  {ui("Ekstra effekter som kan få hele FyFlade til å danse med musikken.", "Extra effects that can make all of FyFlade dance with your music.")}
+                </div>
+                <PartyModePanel
+                  language={resolvedAppLanguage}
+                  settings={partyModeSettings}
+                  reducedMotion={reducedMotionEnabled}
+                  captureStatus={partyMode.captureStatus}
+                  captureError={partyMode.captureError}
+                  colors={{
+                    panelRaised: theme.panelRaised,
+                    input: theme.input,
+                    text: theme.text,
+                    muted: theme.muted,
+                    border: theme.border,
+                    borderStrong: theme.borderStrong,
+                    accent: theme.accent,
+                    accentText: readableTextColor(theme.accent),
+                  }}
+                  onUpdate={updatePartyModeSettings}
+                  onStartAudio={() => void partyMode.startAudioCapture()}
+                  onStopAudio={partyMode.stopAudioCapture}
+                />
+              </div>
             </div>
                   </div>
                 )}
@@ -48530,7 +48465,6 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                     <div style={{ marginBottom: 14, padding: 12, border: `1px solid ${theme.border}`, borderRadius: 7, background: theme.panel }}>
                       <strong>{ui("Hurtigkommandoer", "Quick Commands")} — Ctrl+K</strong>
                       <p>{ui("Profiler lar deg raskt bytte visning for ulike situasjoner. Velg Profiler i innstillingene eller skriv «bytt til» i Ctrl+K. Kontoer og innhold endres ikke.", "Profiles let you quickly change your view for different situations. Open Profiles in Settings or type ‘switch to’ in Ctrl+K. Accounts and content stay unchanged.")}</p>
-                      <p>{ui("Tilpass layout: åpne Profiler → Rediger layout. Dra paneler eller plattformnavn mot venstre, høyre, over eller under. Dra en chat inn på en annen for å kombinere dem. Endre størrelse med skillelinjene og velg Lagre. Du kan også bruke «Flytt uten å dra».", "Customize layout: open Profiles → Edit layout. Drag panels or platform names left, right, above or below. Drag one chat onto another to combine them again. Resize with the dividers and Save. You can also use ‘Move without dragging’.")}</p>
                       <p style={{ margin: "6px 0 0", color: theme.muted, fontSize: 11, lineHeight: "16px" }}>{ui("Trykk Ctrl+K utenfor tekstfelt for å åpne kanaler, innstillinger og vanlige FyFlade-verktøy raskt. Ctrl+Shift+F åpner globalt søk.", "Press Ctrl+K outside text fields to quickly open channels, Settings and common FyFlade tools. Ctrl+Shift+F opens Global Search.")}</p>
                     </div>
                     <div style={{ fontSize: 17, fontWeight: 850 }}>

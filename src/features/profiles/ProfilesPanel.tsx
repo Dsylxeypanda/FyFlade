@@ -9,13 +9,9 @@ type Props = {
   onCreate: (name: string, source?: string) => void;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
-  onEditLayout: () => void;
-  onResetLayout: () => void;
-  confirmLayoutReset: boolean;
-  setConfirmLayoutReset: (value: boolean) => void;
 };
 
-export function ProfilesPanel({ store, no, colors, onSwitch, onCreate, onRename, onDelete, onEditLayout, onResetLayout, confirmLayoutReset, setConfirmLayoutReset }: Props) {
+export function ProfilesPanel({ store, no, colors, onSwitch, onCreate, onRename, onDelete }: Props) {
   const t = (a: string, b: string) => no ? a : b;
   const [name, setName] = useState("");
   const [edit, setEdit] = useState<{ kind: "rename" | "duplicate"; id: string } | null>(null);
@@ -35,14 +31,6 @@ export function ProfilesPanel({ store, no, colors, onSwitch, onCreate, onRename,
       <button style={button} disabled={!name.trim()} type="submit">{edit ? t("Lagre", "Save") : t("Lagre nåværende oppsett", "Save current setup")}</button>
       {edit && <button style={button} type="button" onClick={() => { setEdit(null); setName(""); }}>{t("Avbryt", "Cancel")}</button>}
     </form>
-
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
-      <button style={button} onClick={onEditLayout}>{t("Flytt og rediger layout", "Move and edit layout")}</button>
-      <button style={button} onClick={() => setConfirmLayoutReset(true)}>{t("Tilbakestill aktiv layout", "Reset active layout")}</button>
-    </div>
-    <p>{t("I layoutredigering kan du dra chattene fra hele fanehodet, slippe dem mot en kant for å dele, dra skillelinjer for størrelse og slippe i midten for å samle dem igjen.", "In layout editing, drag chats by the whole tab header, drop near an edge to split, drag dividers to resize, and drop in the center to combine them again.")}</p>
-
-    {confirmLayoutReset && <div role="alert" style={{ padding: 10, border: `1px solid ${colors.border}`, borderRadius: 6 }}><p>{t("Tilbakestille den aktive layouten? Kontoer og andre innstillinger beholdes.", "Reset the active layout? Accounts and other settings are kept.")}</p><button style={button} onClick={() => { onResetLayout(); setConfirmLayoutReset(false); }}>{t("Bekreft", "Confirm")}</button>{" "}<button style={button} onClick={() => setConfirmLayoutReset(false)}>{t("Avbryt", "Cancel")}</button></div>}
 
     {customProfiles.length === 0 ? (
       <div style={{ marginTop: 18, padding: "28px 14px", border: `1px dashed ${colors.border}`, borderRadius: 6, textAlign: "center" }}>

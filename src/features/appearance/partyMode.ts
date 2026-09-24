@@ -27,11 +27,11 @@ export const DEFAULT_PARTY_MODE_SETTINGS: PartyModeSettings = {
   style: "rainbow",
   sensitivity: 1,
   bassSensitivity: 1,
-  intensity: 0.65,
-  movement: 0.55,
-  glow: 0.5,
-  colorSpeed: 0.55,
-  fps: 30,
+  intensity: 0.9,
+  movement: 0.85,
+  glow: 0.85,
+  colorSpeed: 0.8,
+  fps: 60,
   affectBackground: true,
   affectChrome: true,
 };
@@ -106,8 +106,8 @@ export function usePartyMode(settings: PartyModeSettings, reducedMotion: boolean
       if (!AudioContextClass) throw new Error("Audio analysis is not supported on this PC.");
       const context = new AudioContextClass();
       const analyser = context.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.78;
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.5;
       context.createMediaStreamSource(stream).connect(analyser);
       stream.getVideoTracks().forEach((track) => { track.enabled = false; });
       stream.getTracks().forEach((track) => track.addEventListener("ended", stopAudioCapture, { once: true }));
@@ -130,7 +130,7 @@ export function usePartyMode(settings: PartyModeSettings, reducedMotion: boolean
     }
     let frame = 0;
     let lastFrame = 0;
-    const data = new Uint8Array(128);
+    const data = new Uint8Array(256);
     const tick = (now: number) => {
       const current = settingsRef.current;
       const interval = 1000 / current.fps;
@@ -141,10 +141,21 @@ export function usePartyMode(settings: PartyModeSettings, reducedMotion: boolean
         const analyser = analyserRef.current;
         if (current.reactToSystemAudio && analyser) {
           analyser.getByteFrequencyData(data);
-          energy = (data.reduce((sum, value) => sum + value, 0) / data.length / 255) * current.sensitivity;
-          bass = (data.slice(0, 14).reduce((sum, value) => sum + value, 0) / 14 / 255) * current.bassSensitivity;
+          const average = data.reduce((sum, value) => sum + value, 0) / data.length / 255;
+          const peak = Math.max(...data) / 255;
+          const bassBins = data.slice(0, 32);
+          const bassAverage = bassBins.reduce((sum, value) => sum + value, 0) / bassBins.length / 255;
+          const bassPeak = Math.max(...bassBins) / 255;
+          energy = (average * 2.25 + peak * 0.65) * current.sensitivity;
+          bass = (bassAverage * 2.1 + bassPeak * 0.8) * current.bassSensitivity;
         }
-        setLevels({ energy: clamp(energy, 0, 1), bass: clamp(bass, 0, 1), phase: now * 0.001 * current.colorSpeed });
+        const nextEnergy = clamp(energy, 0, 1);
+        const nextBass = clamp(bass, 0, 1);
+        setLevels({
+          energy: nextEnergy,
+          bass: nextBass,
+          phase: now * 0.001 * (0.65 + current.colorSpeed * 3.4) + nextEnergy * 1.8 + nextBass * 2.4,
+        });
       }
       frame = requestAnimationFrame(tick);
     };
@@ -159,8 +170,21 @@ export function usePartyMode(settings: PartyModeSettings, reducedMotion: boolean
     "--party-intensity": settings.intensity,
     "--party-movement": settings.movement,
     "--party-glow": settings.glow,
-    "--party-spread": `${110 + settings.movement * 280}%`,
-    "--party-speed": `${Math.max(1.5, 12 - settings.colorSpeed * 10)}s`,
+    "--party-spread": `${95 + settings.movement * 190}%`,
+    "--party-speed": `${Math.max(0.55, 7 - settings.colorSpeed * 6.2)}s`,
+    "--party-spin-speed": `${Math.max(0.8, 9 - settings.colorSpeed * 7.4)}s`,
+    "--party-overlay-opacity": settings.intensity * (0.28 + levels.energy * 0.68),
+    "--party-beat-scale": 1 + levels.bass * settings.movement * 0.14,
+    "--party-beat-rotate": `${(levels.energy - 0.5) * settings.movement * 4}deg`,
+    "--party-hue": `${(levels.phase * 92) % 360}deg`,
+    "--party-phase-turn": `${levels.phase % 1}turn`,
+    "--party-bass-radius": `${24 + levels.bass * 44}%`,
+    "--party-saturation": 1.45 + levels.energy * 2.8,
+    "--party-contrast": 1.05 + levels.bass * 0.8,
+    "--party-glow-px": `${5 + settings.glow * 25 + levels.energy * 32}px`,
+    "--party-inner-glow-px": `${2 + settings.glow * 10 + levels.energy * 12}px`,
+    "--party-control-scale": 1 + levels.bass * settings.movement * 0.035,
+    "--party-flash-opacity": settings.intensity * settings.glow * (0.08 + levels.bass * 0.72),
   } as CSSProperties;
 
   return { captureStatus, captureError, levels, visualStyle, startAudioCapture, stopAudioCapture };

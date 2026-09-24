@@ -4,7 +4,6 @@ import { readUnknownJsonSetting, writeSetting } from "../../lib/localSettings";
 
 export type CommandGroup = "navigation" | "settings" | "streaming" | "help" | "channels";
 export type CommandAction =
-  | { kind: "edit-layout" | "reset-layout" }
   | { kind: "profile"; profileId: string }
   | { kind: "settings"; section: SettingsSectionId; focus?: string }
   | { kind: "channel"; channelId: string }
@@ -14,8 +13,6 @@ export const COMMAND_GROUPS: CommandGroup[] = ["navigation", "settings", "stream
 export const RECENT_COMMANDS_KEY = "fyflate.quickCommands.recent.v1";
 const settings = (id: string, titleNo: string, titleEn: string, section: SettingsSectionId, aliases: string, group: CommandGroup = "settings", focus?: string): QuickCommand => ({ id, titleNo, titleEn, group, aliases, action: { kind: "settings", section, focus } });
 export const QUICK_COMMANDS: QuickCommand[] = [
-  { id: "edit-layout", titleNo: "Rediger gjeldende layout", titleEn: "Edit current layout", group: "settings", aliases: "layout edit rediger oppsett dock split panel", action: { kind: "edit-layout" } },
-  { id: "reset-layout", titleNo: "Tilbakestill profillayout…", titleEn: "Reset profile layout…", group: "settings", aliases: "layout reset tilbakestill oppsett", action: { kind: "reset-layout" } },
   settings("profiles", "Åpne profiler", "Open Profiles", "profiles", "profiles presets profiler oppsett"),
   settings("settings", "Åpne innstillinger", "Open Settings", "general", "settings innstillinger general generelt", "navigation"),
   { id: "search", titleNo: "Åpne globalt søk", titleEn: "Open Global Search", group: "navigation", aliases: "search søk finn find ctrl shift f", action: { kind: "search" } },

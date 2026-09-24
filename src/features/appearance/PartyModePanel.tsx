@@ -49,6 +49,29 @@ export function PartyModePanel({ language, settings, reducedMotion, captureStatu
 
       {settings.enabled && (
         <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+          <button
+            type="button"
+            onClick={() => {
+              onUpdate({
+                enabled: true,
+                style: "chaos",
+                reactToSystemAudio: true,
+                sensitivity: 2.5,
+                bassSensitivity: 3,
+                intensity: 1,
+                movement: 1,
+                glow: 1,
+                colorSpeed: 1,
+                fps: 60,
+                affectBackground: true,
+                affectChrome: true,
+              });
+              onStartAudio();
+            }}
+            style={{ ...button, height: 40, border: "1px solid #ff28e7", background: "linear-gradient(110deg,#ff1744,#8b22ff,#00d9ff,#00ff7b)", color: "#fff", fontWeight: 900, letterSpacing: ".06em", textShadow: "0 1px 3px #000", boxShadow: "0 0 18px rgba(180,35,255,.55)" }}
+          >
+            🔥 {ui("FULL RAVE – MAKS ALT", "FULL RAVE – MAX EVERYTHING")}
+          </button>
           {reducedMotion && <div style={{ padding: 8, border: `1px solid ${colors.border}`, borderRadius: 5, color: colors.muted, fontSize: 9.5 }}>{ui("Satt på pause fordi redusert bevegelse er aktivert.", "Paused because reduced motion is enabled.")}</div>}
           <label style={{ display: "grid", gridTemplateColumns: "minmax(115px, 1fr) minmax(150px, 1.5fr)", alignItems: "center", gap: 9, color: colors.muted, fontSize: 10 }}>
             {ui("Stil", "Style")}
