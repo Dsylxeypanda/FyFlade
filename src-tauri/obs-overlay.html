@@ -49,9 +49,9 @@
         transition: opacity 450ms ease;
       }
 
-      .message.fade-in {
-        animation: fyflate-message-in 260ms ease-out both;
-      }
+      .message.animate-fade { animation: fyflate-message-fade 260ms ease-out both; }
+      .message.animate-slide { animation: fyflate-message-in 260ms ease-out both; }
+      .message.animate-pop { animation: fyflate-message-pop 260ms cubic-bezier(.2,.9,.2,1.25) both; }
 
       .message.outline {
         text-shadow:
@@ -66,6 +66,8 @@
         from { opacity: 0; transform: translateY(8px); }
         to { opacity: 1; transform: translateY(0); }
       }
+      @keyframes fyflate-message-fade { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes fyflate-message-pop { from { opacity: 0; transform: scale(.86); } to { opacity: 1; transform: scale(1); } }
 
       .platform {
         min-width: 20px;
@@ -171,7 +173,9 @@
         const row = document.createElement("div");
         row.className = "message";
         if (settings.textOutline) row.classList.add("outline");
-        if (settings.fadeAnimation && !seenIds.has(message.id)) row.classList.add("fade-in");
+        if (settings.fadeAnimation && !seenIds.has(message.id) && settings.entranceAnimation !== "none") {
+          row.classList.add("animate-" + (settings.entranceAnimation || "slide"));
+        }
 
         if (settings.transparentBackground) {
           row.style.background = "transparent";

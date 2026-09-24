@@ -40596,6 +40596,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                 presentedMessageUsername(
                   message
                 ),
+              userLogin: message.userLogin,
               text: message.text,
               color:
                 message.color ||
@@ -40701,7 +40702,9 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
               channelMessageVisible(obsOverlayTab, message) &&
               obsOverlaySettings.platforms[
                 message.platform as ChatPlatform
-              ]
+              ] &&
+              (!obsOverlaySettings.hideCommands || !/^[!/]/.test(String(message.text || "").trim())) &&
+              (!obsOverlaySettings.hideBots || !/(?:^|[_-])bot$/i.test(String(message.userLogin || message.username || "")))
           )
           .slice(
             -obsOverlaySettings.maximumMessages
@@ -40724,6 +40727,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
             "Testbruker",
             "TestUser"
           ),
+          userLogin: "fyflate_test",
           text: ui(
             "Slik vil en melding se ut i OBS ✨",
             "This is how a message will look in OBS ✨"

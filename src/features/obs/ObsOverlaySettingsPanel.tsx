@@ -177,6 +177,8 @@ export function ObsOverlaySettingsPanel({
               ["showPlatformIcon", ui("Plattformikon", "Platform icon")],
               ["textOutline", ui("Tekstkant / skygge", "Text outline / shadow")],
               ["fadeAnimation", ui("Rolig fade-animasjon", "Subtle fade animation")],
+              ["hideBots", ui("Skjul bot-kontoer", "Hide bot accounts")],
+              ["hideCommands", ui("Skjul kommandoer", "Hide commands")],
             ].map(([key, label]) => (
               <label key={key} style={{ display: "flex", alignItems: "center", gap: 7, color: colors.text, fontSize: 10, cursor: "pointer" }}>
                 <input
@@ -207,6 +209,15 @@ export function ObsOverlaySettingsPanel({
             <input type="range" min={0} max={120} step={5} value={settings.messageFadeSeconds} onChange={(event) => onUpdate({ messageFadeSeconds: Number(event.target.value) })} style={{ width: "100%", marginTop: 8, accentColor: colors.accent }} />
           </label>
         </div>
+        <label style={{ display: "grid", gridTemplateColumns: "minmax(120px, 1fr) minmax(150px, 1.5fr)", alignItems: "center", gap: 10, marginTop: 12, color: colors.muted, fontSize: 9.5 }}>
+          {ui("Meldingsanimasjon", "Message animation")}
+          <select value={settings.entranceAnimation} onChange={(event) => onUpdate({ entranceAnimation: event.target.value as ObsOverlaySettings["entranceAnimation"] })} style={{ ...inputStyle, padding: "0 8px" }}>
+            <option value="none">{ui("Ingen", "None")}</option>
+            <option value="fade">Fade</option>
+            <option value="slide">{ui("Gli inn", "Slide in")}</option>
+            <option value="pop">Pop</option>
+          </select>
+        </label>
       </div>
 
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 10 }}>

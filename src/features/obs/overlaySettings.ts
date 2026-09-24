@@ -16,6 +16,9 @@ export type ObsOverlaySettings = {
   textOutline: boolean;
   messageFadeSeconds: number;
   fadeAnimation: boolean;
+  entranceAnimation: "none" | "fade" | "slide" | "pop";
+  hideBots: boolean;
+  hideCommands: boolean;
   maximumMessages: number;
   selectedChannelId: string;
   platforms: {
@@ -35,6 +38,9 @@ export const DEFAULT_OBS_OVERLAY_SETTINGS: ObsOverlaySettings = {
   textOutline: true,
   messageFadeSeconds: 30,
   fadeAnimation: true,
+  entranceAnimation: "slide",
+  hideBots: true,
+  hideCommands: true,
   maximumMessages: 8,
   selectedChannelId: "active",
   platforms: {
@@ -109,6 +115,18 @@ export function normalizeObsOverlaySettings(
       typeof record.fadeAnimation === "boolean"
         ? record.fadeAnimation
         : DEFAULT_OBS_OVERLAY_SETTINGS.fadeAnimation,
+    entranceAnimation:
+      record.entranceAnimation === "none" || record.entranceAnimation === "fade" || record.entranceAnimation === "pop"
+        ? record.entranceAnimation
+        : "slide",
+    hideBots:
+      typeof record.hideBots === "boolean"
+        ? record.hideBots
+        : DEFAULT_OBS_OVERLAY_SETTINGS.hideBots,
+    hideCommands:
+      typeof record.hideCommands === "boolean"
+        ? record.hideCommands
+        : DEFAULT_OBS_OVERLAY_SETTINGS.hideCommands,
     maximumMessages: clamp(
       record.maximumMessages,
       1,
