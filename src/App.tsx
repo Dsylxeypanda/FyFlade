@@ -44637,7 +44637,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
               <div style={{ width: "100%", minHeight: 27, display: "flex", alignItems: "center" }}>
                 <strong style={{ fontSize: 16 }}>{ui("FyFlade – innstillinger", "FyFlade – Settings")}</strong>
                 {!FYFLATE_WINDOW_MODE && (
-                  <button onPointerDown={(event) => event.stopPropagation()} onClick={() => void openDetachedWindow("settings")} title={ui("Åpne som eget Windows-vindu", "Open as a separate Windows window")} style={{ marginLeft: "auto", border: `1px solid ${theme.border}`, borderRadius: 4, background: theme.panelRaised, color: theme.muted, cursor: "pointer", fontSize: 13, padding: "3px 7px" }}>↗</button>
+                  <button onPointerDown={(event) => event.stopPropagation()} onClick={() => void openDetachedWindow("settings").then(closeSettingsPanel)} title={ui("Flytt innstillingene utenfor FyFlade", "Move settings outside FyFlade")} style={{ marginLeft: "auto", border: `1px solid ${theme.border}`, borderRadius: 4, background: theme.panelRaised, color: theme.muted, cursor: "pointer", fontSize: 10, padding: "5px 8px" }}>{ui("Eget vindu", "Separate window")} ↗</button>
                 )}
                 <button onPointerDown={(event) => event.stopPropagation()} onClick={closeSettingsPanel} style={{ marginLeft: FYFLATE_WINDOW_MODE ? "auto" : 6, border: "none", background: "transparent", color: theme.subtle, cursor: "pointer", fontSize: 20 }}>×</button>
               </div>
@@ -44802,7 +44802,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                     </div>
                   </div>
                 )}
-                {!settingsSearchActive && settingsSection === "profiles" && <div data-tutorial-id="settings-profiles"><ProfilesPanel colors={theme} store={profiles.store} no={resolvedAppLanguage === "no"} onSwitch={switchProfile} onCreate={profiles.create} onRename={profiles.rename} onDelete={id => { const undo = profiles.remove(id); if (undo) showUndoAction(ui("Profilen er slettet", "Profile deleted"), undo); }} onReset={id => { const undo = profiles.reset(id); if (undo) showUndoAction(ui("Profilen er tilbakestilt", "Profile reset"), undo); }} onEditLayout={startLayoutEdit} confirmLayoutReset={confirmLayoutReset} setConfirmLayoutReset={setConfirmLayoutReset} onResetLayout={() => { const undo = profiles.setLayout(activeProfile.id, null); setLayoutSession(null); if (undo) showUndoAction(ui("Profillayouten er tilbakestilt", "Profile layout reset"), undo); }} /></div>}
+                {!settingsSearchActive && settingsSection === "profiles" && <div data-tutorial-id="settings-profiles"><ProfilesPanel colors={theme} store={profiles.store} no={resolvedAppLanguage === "no"} onSwitch={switchProfile} onCreate={profiles.create} onRename={profiles.rename} onDelete={id => { const undo = profiles.remove(id); if (undo) showUndoAction(ui("Profilen er slettet", "Profile deleted"), undo); }} onEditLayout={startLayoutEdit} confirmLayoutReset={confirmLayoutReset} setConfirmLayoutReset={setConfirmLayoutReset} onResetLayout={() => { const undo = profiles.setLayout(activeProfile.id, null); setLayoutSession(null); if (undo) showUndoAction(ui("Profillayouten er tilbakestilt", "Profile layout reset"), undo); }} /></div>}
                 {!settingsSearchActive && settingsSection === "general" && (
                   <div data-tutorial-id="settings-general" style={{ padding: 16 }}>
                     <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 6 }}>
@@ -45183,7 +45183,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                         {ttsSettings.language === "auto" && (
                           <div style={{ padding: 9, border: `1px solid ${theme.border}`, borderRadius: 5, display: "grid", gap: 7 }}>
                             <span style={{ color: theme.muted, fontSize: 9.5 }}>{ui("Egen stemme per språk (valgfritt)", "Voice per language (optional)")}</span>
-                            {([['no-NO', 'Norsk'], ['en-US', 'English'], ['es-ES', 'Español']] as const).map(([language, label]) => (
+                            {([['no-NO', 'Norsk'], ['en-US', 'English'], ['es-ES', 'Español'], ['de-DE', 'Deutsch'], ['fr-FR', 'Français']] as const).map(([language, label]) => (
                               <label key={language} style={{ display: "grid", gridTemplateColumns: "70px minmax(0, 1fr)", alignItems: "center", gap: 8, color: theme.muted, fontSize: 9.5 }}>
                                 {label}
                                 <select
@@ -45216,6 +45216,11 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                             ))}
                           </select>
                         </label>
+
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, color: theme.subtle, fontSize: 9.5 }}>
+                          <span>{ui(`${ttsVoices.length} stemmer funnet på PC-en`, `${ttsVoices.length} voices found on this PC`)}</span>
+                          <button onClick={() => setTtsVoices(window.speechSynthesis.getVoices())} style={smallButton}>{ui("Oppdater stemmer", "Refresh voices")}</button>
+                        </div>
 
                         <label style={{ display: "flex", alignItems: "center", gap: 8, color: theme.muted, fontSize: 10 }}>
                           <span style={{ width: 72 }}>{ui("Hastighet", "Speed")}</span>
@@ -45275,6 +45280,16 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                           {ui("Maks kø", "Maximum queue")}
                           <select value={ttsSettings.maxQueue} onChange={(event) => updateTtsSettings({ maxQueue: Number(event.target.value) })} style={{ height: 30, padding: "0 8px", border: `1px solid ${theme.borderStrong}`, borderRadius: 4, background: theme.input, color: theme.text, fontSize: 10 }}>
                             {[3, 5, 8, 12, 20].map((count) => <option key={count} value={count}>{count}</option>)}
+                          </select>
+                        </label>
+
+                        <label style={{ display: "grid", gridTemplateColumns: "minmax(120px, 1fr) minmax(150px, 1.4fr)", alignItems: "center", gap: 10, color: theme.muted, fontSize: 10 }}>
+                          {ui("Hopp over gammel chat", "Skip old chat after")}
+                          <select value={ttsSettings.skipOlderThanMs} onChange={(event) => updateTtsSettings({ skipOlderThanMs: Number(event.target.value) })} style={{ height: 30, padding: "0 8px", border: `1px solid ${theme.borderStrong}`, borderRadius: 4, background: theme.input, color: theme.text, fontSize: 10 }}>
+                            <option value={10000}>10 s</option>
+                            <option value={30000}>30 s</option>
+                            <option value={60000}>60 s</option>
+                            <option value={120000}>120 s</option>
                           </select>
                         </label>
                       </div>
@@ -45525,16 +45540,10 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => { setShowAddAccount(true); setAccountNotice(""); }}
-                        style={{ ...smallButton, marginLeft: "auto", background: theme.accent, border: `1px solid ${theme.accent}`, color: readableTextColor(theme.accent), fontWeight: 700 }}
-                      >
-                        {ui("+ Legg til konto", "+ Add account")}
-                      </button>
                     </div>
 
                     <div style={{ border: `1px solid ${theme.border}`, borderRadius: 7, overflow: "hidden" }}>
-                      <div data-command-target="account-twitch" tabIndex={-1} style={{ padding: "7px 10px", background: theme.panel, color: theme.muted, fontSize: 10, fontWeight: 800, letterSpacing: ".05em", borderBottom: `1px solid ${theme.border}` }}>TWITCH</div>
+                      <div data-command-target="account-twitch" tabIndex={-1} style={{ padding: "7px 10px", background: theme.panel, color: theme.muted, fontSize: 10, fontWeight: 800, letterSpacing: ".05em", borderBottom: `1px solid ${theme.border}`, display: "flex", alignItems: "center", gap: 6 }}><TwitchIcon size={13} /> TWITCH</div>
 
                       <div style={{ minHeight: 62, display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderBottom: `1px solid ${theme.border}` }}>
                         <div style={{ width: 38, height: 38, borderRadius: "50%", overflow: "hidden", display: "grid", placeItems: "center", background: "#9147ff", color: "white", flexShrink: 0 }}>
@@ -45558,11 +45567,11 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                             <button onClick={() => void disconnectTwitch()} style={{ ...smallButton, color: "#ff827a", border: "1px solid #6c3438" }}>{ui("Fjern", "Remove")}</button>
                           </>
                         ) : (
-                          <button onClick={() => setShowAddAccount(true)} style={smallButton}>{ui("Legg til", "Add")}</button>
+                          <button onClick={() => void connectTwitch()} style={{ ...smallButton, background: "#9147ff", border: "1px solid #9147ff", color: "white", fontWeight: 700 }}>{ui("Logg inn", "Log in")}</button>
                         )}
                       </div>
 
-                      <div data-command-target="account-kick" tabIndex={-1} style={{ padding: "7px 10px", background: theme.panel, color: theme.muted, fontSize: 10, fontWeight: 800, letterSpacing: ".05em", borderBottom: `1px solid ${theme.border}` }}>KICK</div>
+                      <div data-command-target="account-kick" tabIndex={-1} style={{ padding: "7px 10px", background: theme.panel, color: theme.muted, fontSize: 10, fontWeight: 800, letterSpacing: ".05em", borderBottom: `1px solid ${theme.border}`, display: "flex", alignItems: "center", gap: 6 }}><span aria-hidden="true" style={{ width: 13, height: 13, borderRadius: 3, display: "grid", placeItems: "center", background: "#53fc18", color: "#111", fontSize: 8, fontWeight: 950, letterSpacing: 0 }}>K</span> KICK</div>
                       <div style={{ minHeight: 64, display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderBottom: `1px solid ${theme.border}` }}>
                         <div style={{ width: 38, height: 38, borderRadius: kickConnected && !streamerModeEnabled && kickAvatar ? "50%" : 7, overflow: "hidden", display: "grid", placeItems: "center", background: "#53fc18", color: "#111", fontWeight: 900, fontSize: 13, flexShrink: 0 }}>
                           {kickConnected && !streamerModeEnabled && kickAvatar ? (
@@ -45604,7 +45613,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                         )}
                       </div>
 
-                      <div data-command-target="account-youtube" tabIndex={-1} style={{ padding: "7px 10px", background: theme.panel, color: theme.muted, fontSize: 10, fontWeight: 800, letterSpacing: ".05em", borderBottom: `1px solid ${theme.border}` }}>YOUTUBE</div>
+                      <div data-command-target="account-youtube" tabIndex={-1} style={{ padding: "7px 10px", background: theme.panel, color: theme.muted, fontSize: 10, fontWeight: 800, letterSpacing: ".05em", borderBottom: `1px solid ${theme.border}`, display: "flex", alignItems: "center", gap: 6 }}><YouTubeIcon size={13} /> YOUTUBE</div>
                       <div style={{ minHeight: 64, display: "flex", alignItems: "center", gap: 10, padding: "9px 10px" }}>
                         <div style={{ width: 38, height: 38, borderRadius: youtubeConnected && !streamerModeEnabled && youtubeChannelAvatar ? "50%" : 7, overflow: "hidden", display: "grid", placeItems: "center", background: "#ff0033", color: "white", fontWeight: 900, fontSize: 11, flexShrink: 0 }}>
                           {youtubeConnected && !streamerModeEnabled && youtubeChannelAvatar ? (
@@ -47489,6 +47498,12 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                               <option value="pling">Pling 1</option>
                               <option value="bell">Bell</option>
                               <option value="soft">Soft</option>
+                              <option value="chime">Chime</option>
+                              <option value="pop">Pop</option>
+                              <option value="digital">Digital</option>
+                              <option value="sparkle">Sparkle</option>
+                              <option value="bass">Bass</option>
+                              <option value="arcade">Arcade</option>
                               {user.customSoundDataUrl && (
                                 <option value="custom">{user.customSoundName || ui("Egen lyd", "Custom sound")}</option>
                               )}

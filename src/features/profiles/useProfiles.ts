@@ -62,7 +62,9 @@ export function useProfiles(current: ProfileView, apply: (view: ProfileView) => 
       const source = sourceId ? previous.profiles.find(p => p.id === sourceId)?.view : current;
       if (!source) return;
       const layout = previous.profiles.find(p => p.id === (sourceId || previous.activeId))?.layout;
-      commit({ ...previous, profiles: [...previous.profiles, { id: `custom-${crypto.randomUUID()}`, name: name.trim().slice(0, 60), view: safeView(source, previous.normalBaseline), layout: validateLayout(layout) }] });
+      const id = `custom-${crypto.randomUUID()}`;
+      const profile = { id, name: name.trim().slice(0, 60), view: safeView(source, previous.normalBaseline), layout: validateLayout(layout) };
+      restore({ ...previous, activeId: id, profiles: [...previous.profiles, profile] });
     },
     rename(id: string, name: string) { if (!isBuiltin(id) && name.trim()) commit({ ...state.current, profiles: state.current.profiles.map(p => p.id === id ? { ...p, name: name.trim().slice(0, 60) } : p) }); },
     remove(id: string) {

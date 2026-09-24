@@ -1,4 +1,14 @@
-export type HighlightSoundId = "pling" | "bell" | "soft" | "custom";
+export type HighlightSoundId =
+  | "pling"
+  | "bell"
+  | "soft"
+  | "chime"
+  | "pop"
+  | "digital"
+  | "sparkle"
+  | "bass"
+  | "arcade"
+  | "custom";
 export type HighlightPulseStrength = "weak" | "normal" | "strong";
 export type HighlightPulseSpeed = "slow" | "normal" | "fast";
 export type HighlightVisualStyle = "bar" | "fill" | "glow";
@@ -40,10 +50,9 @@ export function normalizeHighlightPreferences(
         ? value.color.toUpperCase()
         : DEFAULT_HIGHLIGHT_PREFERENCES.color,
     soundEnabled: value?.soundEnabled === true,
-    soundId:
-      value?.soundId === "bell" || value?.soundId === "soft" || value?.soundId === "custom"
-        ? value.soundId
-        : "pling",
+    soundId: ["pling", "bell", "soft", "chime", "pop", "digital", "sparkle", "bass", "arcade", "custom"].includes(value?.soundId || "")
+      ? value!.soundId as HighlightSoundId
+      : "pling",
     soundVolume:
       typeof value?.soundVolume === "number" && Number.isFinite(value.soundVolume)
         ? Math.max(0, Math.min(1, value.soundVolume))
@@ -83,21 +92,27 @@ export function playBuiltInHighlightSound(
   soundId: HighlightSoundId,
   volume = DEFAULT_HIGHLIGHT_PREFERENCES.soundVolume
 ) {
-  const notes =
-    soundId === "bell"
-      ? [784, 1047]
-      : soundId === "soft"
-        ? [392, 523]
-        : [660, 880];
+  const patterns: Record<Exclude<HighlightSoundId, "custom">, { notes: number[]; spacing: number; duration: number; type: OscillatorType }> = {
+    pling: { notes: [660, 880], spacing: 0.075, duration: 0.18, type: "triangle" },
+    bell: { notes: [784, 1047], spacing: 0.09, duration: 0.32, type: "triangle" },
+    soft: { notes: [392, 523], spacing: 0.11, duration: 0.22, type: "sine" },
+    chime: { notes: [523, 659, 784], spacing: 0.085, duration: 0.28, type: "sine" },
+    pop: { notes: [330, 660], spacing: 0.045, duration: 0.11, type: "square" },
+    digital: { notes: [880, 1175, 988], spacing: 0.055, duration: 0.13, type: "square" },
+    sparkle: { notes: [1047, 1319, 1568], spacing: 0.065, duration: 0.2, type: "sine" },
+    bass: { notes: [147, 196], spacing: 0.12, duration: 0.3, type: "sine" },
+    arcade: { notes: [523, 784, 1047, 1319], spacing: 0.05, duration: 0.12, type: "square" },
+  };
+  const pattern = patterns[soundId === "custom" ? "pling" : soundId];
   const now = context.currentTime;
 
-  notes.forEach((frequency, index) => {
+  pattern.notes.forEach((frequency, index) => {
     const oscillator = context.createOscillator();
     const gain = context.createGain();
-    const start = now + index * 0.075;
-    const duration = soundId === "bell" ? 0.32 : 0.18;
+    const start = now + index * pattern.spacing;
+    const duration = pattern.duration;
 
-    oscillator.type = soundId === "soft" ? "sine" : "triangle";
+    oscillator.type = pattern.type;
     oscillator.frequency.setValueAtTime(frequency, start);
     gain.gain.setValueAtTime(0.0001, start);
     gain.gain.exponentialRampToValueAtTime(

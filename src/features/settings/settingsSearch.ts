@@ -109,16 +109,6 @@ export const SETTINGS_SEARCH_ENTRIES: SettingsSearchEntry[] = [
     advanced: false,
   },
   {
-    id: "kick-health",
-    section: "kick",
-    titleNo: "Kick-tilkobling",
-    titleEn: "Kick connection",
-    descriptionNo: "Kontroller og reparer Kick-chatabonnementer.",
-    descriptionEn: "Check and repair Kick chat subscriptions.",
-    keywords: "kick webhook relay repair reparer subscription abonnement status",
-    advanced: true,
-  },
-  {
     id: "emotes",
     section: "emotes",
     titleNo: "Emoter",

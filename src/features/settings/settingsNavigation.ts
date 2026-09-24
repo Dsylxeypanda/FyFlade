@@ -8,7 +8,6 @@ export const DEFAULT_SETTINGS_NAV_ORDER: SettingsSectionId[] = [
   "accounts",
   "usage",
   "obs",
-  "kick",
   "emotes",
   "chat",
   "tabs",
