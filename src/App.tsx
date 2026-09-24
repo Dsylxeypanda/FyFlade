@@ -71,6 +71,7 @@ import {
 } from "./features/highlights/highlightPreferences";
 import {
   readTtsSettings,
+  enqueueTts,
   speakTts,
   stopTts,
   TTS_SETTINGS_KEY,
@@ -13309,9 +13310,22 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
   function ttsMessageText(message: TwitchChatMessage) {
     const author = message.username || message.userLogin || "";
-    return ttsSettingsRef.current.includeUsername && author
-      ? `${author}: ${message.text}`
-      : message.text;
+    const tts = ttsSettingsRef.current;
+    const parts = [
+      tts.includeUsername && author ? author : "",
+      tts.includeMessage ? message.text : "",
+    ].filter(Boolean);
+    return parts.join(": ");
+  }
+
+  function messageAllowedForTts(message: TwitchChatMessage) {
+    const tts = ttsSettingsRef.current;
+    const platform = message.platform || "twitch";
+    const author = (message.userLogin || message.username || "").toLowerCase();
+    if (!tts.platforms[platform]) return false;
+    if (tts.ignoreCommands && /^[!/]/.test(message.text.trim())) return false;
+    if (tts.ignoreBots && /(?:^|[_-])bot$/.test(author)) return false;
+    return true;
   }
 
   function scheduleHoverTts(message: TwitchChatMessage) {
@@ -13321,7 +13335,9 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     }
     hoverTtsTimerRef.current = window.setTimeout(() => {
       hoverTtsTimerRef.current = null;
-      speakTts(ttsSettingsRef.current, ttsMessageText(message));
+      if (messageAllowedForTts(message)) {
+        enqueueTts(ttsSettingsRef.current, ttsMessageText(message), { priority: 1, createdAt: message.timestampMs });
+      }
     }, ttsSettingsRef.current.hoverDelayMs);
   }
 
@@ -13426,8 +13442,11 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       (tts.mode === "highlights" && Boolean(highlighted))
     );
 
-    if (shouldSpeak) {
-      speakTts(tts, ttsMessageText(message));
+    if (shouldSpeak && messageAllowedForTts(message)) {
+      enqueueTts(tts, ttsMessageText(message), {
+        priority: storedMessageMentionsMe(message) ? 5 : highlighted ? 3 : 1,
+        createdAt: message.timestampMs,
+      });
     }
 
     if (!highlighted) {
@@ -45103,6 +45122,15 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                           {ui("Les brukernavnet først", "Read username first")}
                         </label>
 
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, color: theme.text, fontSize: 10.5, cursor: "pointer" }}>
+                          <input
+                            type="checkbox"
+                            checked={ttsSettings.includeMessage}
+                            onChange={(event) => updateTtsSettings({ includeMessage: event.target.checked })}
+                          />
+                          {ui("Les selve meldingen", "Read the message text")}
+                        </label>
+
                         <label style={{ display: "grid", gridTemplateColumns: "minmax(120px, 1fr) minmax(150px, 1.4fr)", alignItems: "center", gap: 10, color: theme.muted, fontSize: 10 }}>
                           {ui("Språk for uttale", "Speech language")}
                           <select
@@ -45113,8 +45141,32 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                             <option value="auto">{ui("Automatisk / stemmen bestemmer", "Automatic / use voice default")}</option>
                             <option value="no-NO">Norsk</option>
                             <option value="en-US">English</option>
+                            <option value="es-ES">Español</option>
+                            <option value="de-DE">Deutsch</option>
+                            <option value="fr-FR">Français</option>
                           </select>
                         </label>
+
+                        {ttsSettings.language === "auto" && (
+                          <div style={{ padding: 9, border: `1px solid ${theme.border}`, borderRadius: 5, display: "grid", gap: 7 }}>
+                            <span style={{ color: theme.muted, fontSize: 9.5 }}>{ui("Egen stemme per språk (valgfritt)", "Voice per language (optional)")}</span>
+                            {([['no-NO', 'Norsk'], ['en-US', 'English'], ['es-ES', 'Español']] as const).map(([language, label]) => (
+                              <label key={language} style={{ display: "grid", gridTemplateColumns: "70px minmax(0, 1fr)", alignItems: "center", gap: 8, color: theme.muted, fontSize: 9.5 }}>
+                                {label}
+                                <select
+                                  value={ttsSettings.voiceByLanguage[language] || ""}
+                                  onChange={(event) => updateTtsSettings({ voiceByLanguage: { ...ttsSettings.voiceByLanguage, [language]: event.target.value } })}
+                                  style={{ height: 28, padding: "0 7px", border: `1px solid ${theme.borderStrong}`, borderRadius: 4, background: theme.input, color: theme.text, fontSize: 9.5, minWidth: 0 }}
+                                >
+                                  <option value="">{ui("Automatisk", "Automatic")}</option>
+                                  {ttsVoices.filter((voice) => voice.lang.toLowerCase().startsWith(language.slice(0, 2).toLowerCase())).map((voice) => (
+                                    <option key={voice.voiceURI} value={voice.voiceURI}>{voice.name}</option>
+                                  ))}
+                                </select>
+                              </label>
+                            ))}
+                          </div>
+                        )}
 
                         <label style={{ display: "grid", gridTemplateColumns: "minmax(120px, 1fr) minmax(150px, 1.4fr)", alignItems: "center", gap: 10, color: theme.muted, fontSize: 10 }}>
                           {ui("Stemme", "Voice")}
@@ -45158,6 +45210,39 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                             style={{ flex: 1 }}
                           />
                           <span style={{ width: 30, textAlign: "right" }}>{Math.round(ttsSettings.volume * 100)}%</span>
+                        </label>
+
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, color: theme.muted, fontSize: 10 }}>
+                          <span style={{ width: 72 }}>{ui("Tonehøyde", "Pitch")}</span>
+                          <input type="range" min="0.5" max="2" step="0.1" value={ttsSettings.pitch} onChange={(event) => updateTtsSettings({ pitch: Number(event.target.value) })} style={{ flex: 1 }} />
+                          <span style={{ width: 30, textAlign: "right" }}>{ttsSettings.pitch.toFixed(1)}</span>
+                        </label>
+
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, color: theme.text, fontSize: 10 }}>
+                          {([['twitch', 'Twitch'], ['kick', 'Kick'], ['youtube', 'YouTube']] as const).map(([platform, label]) => (
+                            <label key={platform} style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer" }}>
+                              <input type="checkbox" checked={ttsSettings.platforms[platform]} onChange={(event) => updateTtsSettings({ platforms: { ...ttsSettings.platforms, [platform]: event.target.checked } })} />
+                              {label}
+                            </label>
+                          ))}
+                        </div>
+
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, color: theme.text, fontSize: 10 }}>
+                          <label style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer" }}>
+                            <input type="checkbox" checked={ttsSettings.ignoreBots} onChange={(event) => updateTtsSettings({ ignoreBots: event.target.checked })} />
+                            {ui("Hopp over bot-kontoer", "Skip bot accounts")}
+                          </label>
+                          <label style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer" }}>
+                            <input type="checkbox" checked={ttsSettings.ignoreCommands} onChange={(event) => updateTtsSettings({ ignoreCommands: event.target.checked })} />
+                            {ui("Hopp over kommandoer", "Skip commands")}
+                          </label>
+                        </div>
+
+                        <label style={{ display: "grid", gridTemplateColumns: "minmax(120px, 1fr) minmax(150px, 1.4fr)", alignItems: "center", gap: 10, color: theme.muted, fontSize: 10 }}>
+                          {ui("Maks kø", "Maximum queue")}
+                          <select value={ttsSettings.maxQueue} onChange={(event) => updateTtsSettings({ maxQueue: Number(event.target.value) })} style={{ height: 30, padding: "0 8px", border: `1px solid ${theme.borderStrong}`, borderRadius: 4, background: theme.input, color: theme.text, fontSize: 10 }}>
+                            {[3, 5, 8, 12, 20].map((count) => <option key={count} value={count}>{count}</option>)}
+                          </select>
                         </label>
                       </div>
 
