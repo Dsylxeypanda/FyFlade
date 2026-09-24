@@ -42503,11 +42503,29 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
             fontSize:
               12,
+
+            display:
+              "flex",
+
+            alignItems:
+              "center",
+
+            gap:
+              10,
           }}
         >
-          {
-            twitchError
-          }
+          <span style={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>
+            {twitchError}
+          </span>
+          <button
+            type="button"
+            aria-label={ui("Lukk feilmelding", "Close error message")}
+            title={ui("Lukk", "Close")}
+            onClick={() => setTwitchError("")}
+            style={{ width: 24, height: 24, flexShrink: 0, display: "grid", placeItems: "center", padding: 0, border: "none", borderRadius: 4, background: "transparent", color: "inherit", cursor: "pointer", fontSize: 18, lineHeight: 1 }}
+          >
+            ×
+          </button>
         </div>
       )}
 
