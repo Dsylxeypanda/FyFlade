@@ -208,6 +208,9 @@ const FLOATING_USER_CARD_KEY =
 const FLOATING_SETTINGS_SYNC_KEY =
   "chatnest.windows.settingsSync.v1";
 
+const SUPPRESS_STARTUP_INTRO_ONCE_KEY =
+  "fyflate.startupIntro.suppressOnce.v1";
+
 const FYFLATE_CURRENT_WINDOW_LABEL =
   (() => {
     try {
@@ -5650,12 +5653,12 @@ function App() {
     startupIntroVisible,
     setStartupIntroVisible,
   ] = useState(
-    () =>
-      !FYFLATE_WINDOW_MODE &&
-      readBooleanSetting(
-        STARTUP_INTRO_ENABLED_KEY,
-        true
-      )
+    () => {
+      if (FYFLATE_WINDOW_MODE) return false;
+      const suppressOnce = sessionStorage.getItem(SUPPRESS_STARTUP_INTRO_ONCE_KEY) === "true";
+      if (suppressOnce) sessionStorage.removeItem(SUPPRESS_STARTUP_INTRO_ONCE_KEY);
+      return !suppressOnce && readBooleanSetting(STARTUP_INTRO_ENABLED_KEY, true);
+    }
   );
 
   const [
@@ -9455,6 +9458,10 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
             !FYFLATE_WINDOW_MODE &&
             event.key === FLOATING_SETTINGS_SYNC_KEY
           ) {
+            sessionStorage.setItem(
+              SUPPRESS_STARTUP_INTRO_ONCE_KEY,
+              "true"
+            );
             window.location.reload();
             return;
           }
