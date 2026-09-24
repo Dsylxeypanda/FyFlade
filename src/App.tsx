@@ -26,6 +26,7 @@ import {
 } from "@tauri-apps/plugin-updater";
 
 import { TWITCH_CLIENT_ID } from "./twitchConfig";
+import { YOUTUBE_OAUTH_CLIENT_ID } from "./youtubeConfig";
 import {
   buildInboxTags,
   normalizeInboxTags,
@@ -426,7 +427,7 @@ const YOUTUBE_OAUTH_CLIENT_SECRET_KEY =
   "chatnest.youtube.oauthClientSecret.v1";
 
 const FYFLADE_YOUTUBE_OAUTH_CLIENT_ID =
-  String(import.meta.env.VITE_YOUTUBE_OAUTH_CLIENT_ID || "").trim();
+  String(import.meta.env.VITE_YOUTUBE_OAUTH_CLIENT_ID || YOUTUBE_OAUTH_CLIENT_ID).trim();
 
 const FYFLADE_YOUTUBE_OAUTH_CLIENT_SECRET =
   String(import.meta.env.VITE_YOUTUBE_OAUTH_CLIENT_SECRET || "").trim();
