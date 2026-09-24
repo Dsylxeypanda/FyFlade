@@ -159,6 +159,7 @@ export function usePartyMode(settings: PartyModeSettings, reducedMotion: boolean
     "--party-intensity": settings.intensity,
     "--party-movement": settings.movement,
     "--party-glow": settings.glow,
+    "--party-spread": `${110 + settings.movement * 280}%`,
     "--party-speed": `${Math.max(1.5, 12 - settings.colorSpeed * 10)}s`,
   } as CSSProperties;
 

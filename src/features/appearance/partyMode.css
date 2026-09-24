@@ -1,11 +1,11 @@
 .fyflate-party-root { position: relative; isolation: isolate; }
 .fyflate-party-root::before {
   content: ""; position: absolute; inset: 0; z-index: 99998; pointer-events: none;
-  opacity: calc(var(--party-intensity, .6) * (.12 + var(--party-energy, .2) * .35));
-  mix-blend-mode: screen; background-size: 300% 300%;
+  opacity: 0;
+  mix-blend-mode: screen; background-size: var(--party-spread, 250%) var(--party-spread, 250%);
   animation: fyflade-party-flow var(--party-speed, 7s) linear infinite;
 }
-.fyflate-party-background::before { z-index: 0; }
+.fyflate-party-background::before { z-index: 0; opacity: calc(var(--party-intensity, .6) * (.12 + var(--party-energy, .2) * .35)); }
 .fyflate-party-background > * { position: relative; z-index: 1; }
 .fyflade-party-rainbow::before { background-image: linear-gradient(115deg,#ff2674,#8e45ff,#00d9ff,#36ff8b,#ffe14a,#ff2674); }
 .fyflade-party-bass::before { background-image: radial-gradient(circle at 50% 100%,rgba(255,30,110,.95),transparent calc(24% + var(--party-bass) * 44%)),linear-gradient(135deg,#120044,#0079ff); }
@@ -14,6 +14,11 @@
 .fyflade-party-disco::before { background-image: conic-gradient(from calc(var(--party-phase) * 1turn),#ff247d,#ffd429,#30ffb1,#20bfff,#a64dff,#ff247d); }
 .fyflade-party-chill::before { background-image: radial-gradient(circle at 20% 20%,#55ddff,transparent 45%),radial-gradient(circle at 80% 80%,#9d63ff,transparent 48%); }
 .fyflade-party-chaos::before { background-image: conic-gradient(#ff1744,#ffea00,#00e5ff,#651fff,#ff1744); filter: saturate(1.7) contrast(1.25); }
-.fyflade-party-chrome { filter: drop-shadow(0 0 calc(4px + var(--party-glow) * 14px) rgba(0,220,255,calc(.12 + var(--party-energy) * .38))); }
+.fyflade-party-chrome button,
+.fyflade-party-chrome input,
+.fyflade-party-chrome select {
+  box-shadow: 0 0 calc(3px + var(--party-glow) * 13px) rgba(0,220,255,calc(.12 + var(--party-energy) * .42));
+  transition: box-shadow 100ms linear, border-color 100ms linear;
+}
 @keyframes fyflade-party-flow { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
 @media (prefers-reduced-motion: reduce) { .fyflate-party-root::before { animation: none !important; } }
