@@ -6215,7 +6215,12 @@ function App() {
     setSettingsSection,
   ] =
     useState<SettingsSection>(
-      "accounts"
+      () => {
+        const requested = FYFLATE_WINDOW_PARAMETERS.get("settingsSection") as SettingsSection | null;
+        return FYFLATE_WINDOW_MODE === "settings" && requested && DEFAULT_SETTINGS_NAV_ORDER.includes(requested)
+          ? requested
+          : "accounts";
+      }
     );
 
   const [
@@ -36018,7 +36023,8 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
   async function openDetachedWindow(
     windowKind:
       | "settings"
-      | "user-card"
+      | "user-card",
+    requestedSettingsSection?: SettingsSectionId
   ) {
     const isSettings =
       windowKind ===
@@ -36092,7 +36098,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
           label,
           {
             url:
-              `index.html?fyflateWindow=${windowKind}${cardId ? `&cardId=${encodeURIComponent(cardId)}` : ""}`,
+              `index.html?fyflateWindow=${windowKind}${cardId ? `&cardId=${encodeURIComponent(cardId)}` : ""}${isSettings && requestedSettingsSection ? `&settingsSection=${encodeURIComponent(requestedSettingsSection)}` : ""}`,
             title:
               isSettings
                 ? ui(
@@ -38361,20 +38367,17 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
             false
           );
 
-          setSettingsSection(
-            "accounts"
-          );
-
-          setShowSettings(
-            true
-          );
-
           setShowAddAccount(
             false
           );
 
           setHighlightError(
             ""
+          );
+
+          void openDetachedWindow(
+            "settings",
+            "accounts"
           );
         }}
         title={ui("Kontoer og innstillinger", "Accounts and settings")}
@@ -44647,10 +44650,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
             <div onPointerDown={(event) => beginFloatingWindowDrag(event, "settings")} title={ui("Dra for å flytte vinduet", "Drag to move the window")} style={{ minHeight: 88, padding: "7px 14px 9px", display: "flex", flexDirection: "column", gap: 7, borderBottom: `1px solid ${theme.border}`, background: theme.panel, cursor: "grab", userSelect: "none", touchAction: "none", boxSizing: "border-box" }}>
               <div style={{ width: "100%", minHeight: 27, display: "flex", alignItems: "center" }}>
                 <strong style={{ fontSize: 16 }}>{ui("FyFlade – innstillinger", "FyFlade – Settings")}</strong>
-                {!FYFLATE_WINDOW_MODE && (
-                  <button onPointerDown={(event) => event.stopPropagation()} onClick={() => void openDetachedWindow("settings").then(closeSettingsPanel)} title={ui("Flytt innstillingene utenfor FyFlade", "Move settings outside FyFlade")} style={{ marginLeft: "auto", border: `1px solid ${theme.border}`, borderRadius: 4, background: theme.panelRaised, color: theme.muted, cursor: "pointer", fontSize: 10, padding: "5px 8px" }}>{ui("Eget vindu", "Separate window")} ↗</button>
-                )}
-                <button onPointerDown={(event) => event.stopPropagation()} onClick={closeSettingsPanel} style={{ marginLeft: FYFLATE_WINDOW_MODE ? "auto" : 6, border: "none", background: "transparent", color: theme.subtle, cursor: "pointer", fontSize: 20 }}>×</button>
+                <button onPointerDown={(event) => event.stopPropagation()} onClick={closeSettingsPanel} style={{ marginLeft: "auto", border: "none", background: "transparent", color: theme.subtle, cursor: "pointer", fontSize: 20 }}>×</button>
               </div>
               <div onPointerDown={(event) => event.stopPropagation()} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, cursor: "default" }}>
                 <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
