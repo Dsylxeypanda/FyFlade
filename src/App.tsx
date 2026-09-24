@@ -48,6 +48,9 @@ import {
   googleWebTranslationProvider,
   hasExternalTranslationConsent,
   rememberExternalTranslationConsent,
+  readTranslationSettings,
+  writeTranslationSettings,
+  type TranslationSettings,
 } from "./features/translation/translationProvider";
 import {
   createLocalIgnore,
@@ -5629,6 +5632,7 @@ function App() {
 
   const [partyModeSettings, setPartyModeSettings] = useState<PartyModeSettings>(readPartyModeSettings);
   const partyMode = usePartyMode(partyModeSettings, reducedMotionEnabled || Boolean(FYFLATE_WINDOW_MODE));
+  const [translationSettings, setTranslationSettings] = useState<TranslationSettings>(readTranslationSettings);
 
   const [
     startupIntroEnabled,
@@ -22143,10 +22147,9 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     message:
       TwitchChatMessage
   ) {
-    const targetLanguage =
-      resolvedAppLanguage === "no"
-        ? "no"
-        : "en";
+    const targetLanguage = translationSettings.targetLanguage === "app"
+      ? (resolvedAppLanguage === "no" ? "no" : "en")
+      : translationSettings.targetLanguage;
     if (!hasExternalTranslationConsent()) {
       const approved = window.confirm(
         ui(
@@ -38006,6 +38009,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                       </button>
                     )}
 
+                    {translationSettings.showTranslateAction && translationSettings.platforms[message.platform || "twitch"] && (
                     <button
                       onClick={(event) => {
                         event.stopPropagation();
@@ -38041,6 +38045,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                     >
                       文
                     </button>
+                    )}
 
                     <button
                       onClick={(
@@ -46588,6 +46593,37 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                   }
                   px
                 </strong>
+              </div>
+
+              <div style={{ marginTop: 14, padding: 11, border: `1px solid ${theme.border}`, borderRadius: 6, background: theme.panelRaised }}>
+                <div style={{ color: theme.text, fontSize: 11, fontWeight: 800 }}>{ui("Oversettelse", "Translation")}</div>
+                <div style={{ marginTop: 3, color: theme.muted, fontSize: 9.5, lineHeight: "15px" }}>
+                  {ui("Viser en oversett-knapp på meldinger. Teksten sendes bare til Google Translate når du selv trykker og godkjenner første gang.", "Shows a translate action on messages. Text is only sent to Google Translate when you click it and approve the first time.")}
+                </div>
+                <label style={{ marginTop: 9, display: "flex", alignItems: "center", gap: 7, color: theme.text, fontSize: 10, cursor: "pointer" }}>
+                  <input type="checkbox" checked={translationSettings.showTranslateAction} onChange={(event) => {
+                    const next = { ...translationSettings, showTranslateAction: event.target.checked };
+                    setTranslationSettings(next); writeTranslationSettings(next);
+                  }} />
+                  {ui("Vis oversett-knapp i chat", "Show translate action in chat")}
+                </label>
+                <label style={{ marginTop: 9, display: "grid", gridTemplateColumns: "minmax(100px, 1fr) minmax(140px, 1.5fr)", alignItems: "center", gap: 8, color: theme.muted, fontSize: 10 }}>
+                  {ui("Målspråk", "Target language")}
+                  <select value={translationSettings.targetLanguage} onChange={(event) => {
+                    const next = { ...translationSettings, targetLanguage: event.target.value as TranslationSettings["targetLanguage"] };
+                    setTranslationSettings(next); writeTranslationSettings(next);
+                  }} style={{ height: 30, padding: "0 8px", border: `1px solid ${theme.borderStrong}`, borderRadius: 4, background: theme.input, color: theme.text }}>
+                    <option value="app">{ui("Samme som appen", "Same as app")}</option><option value="no">Norsk</option><option value="en">English</option><option value="es">Español</option><option value="de">Deutsch</option><option value="fr">Français</option>
+                  </select>
+                </label>
+                <div style={{ marginTop: 9, display: "flex", flexWrap: "wrap", gap: 11, color: theme.text, fontSize: 10 }}>
+                  {([['twitch','Twitch'],['kick','Kick'],['youtube','YouTube']] as const).map(([platform,label]) => (
+                    <label key={platform} style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer" }}><input type="checkbox" checked={translationSettings.platforms[platform]} onChange={(event) => {
+                      const next = { ...translationSettings, platforms: { ...translationSettings.platforms, [platform]: event.target.checked } };
+                      setTranslationSettings(next); writeTranslationSettings(next);
+                    }} />{label}</label>
+                  ))}
+                </div>
               </div>
 
               <div
