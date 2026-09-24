@@ -41,6 +41,10 @@ import {
 import { humanErrorMessage } from "./lib/humanError";
 import { safeDiagnosticError } from "./lib/safeDiagnostics";
 import {
+  SingleFlightTtlCache,
+  type RequestCacheEvent,
+} from "./lib/requestCache";
+import {
   googleWebTranslationProvider,
   hasExternalTranslationConsent,
   rememberExternalTranslationConsent,
@@ -1083,6 +1087,9 @@ type YouTubeQuotaTracker = {
   errorCount: number;
   rateLimitCount: number;
   endpointCalls: Record<string, number>;
+  cacheHits: number;
+  cacheMisses: number;
+  deduplicatedRequests: number;
   exhausted: boolean;
   lastAction: string;
   lastError: string;
@@ -1166,6 +1173,12 @@ function emptyYouTubeQuotaTracker():
       0,
     endpointCalls:
       {},
+    cacheHits:
+      0,
+    cacheMisses:
+      0,
+    deduplicatedRequests:
+      0,
     exhausted:
       false,
     lastAction:
@@ -1225,6 +1238,12 @@ function readYouTubeQuotaTracker():
         parsed.endpointCalls && typeof parsed.endpointCalls === "object"
           ? parsed.endpointCalls
           : {},
+      cacheHits:
+        Math.max(0, Number(parsed.cacheHits || 0)),
+      cacheMisses:
+        Math.max(0, Number(parsed.cacheMisses || 0)),
+      deduplicatedRequests:
+        Math.max(0, Number(parsed.deduplicatedRequests || 0)),
       exhausted:
         parsed.exhausted ===
         true,
@@ -1510,6 +1529,9 @@ type YouTubeVideoResponse = {
     };
   }>;
 };
+
+type YouTubeVideoRecord =
+  NonNullable<YouTubeVideoResponse["items"]>[number];
 
 type YouTubeLiveChatMessageApi = {
   id?: string;
@@ -7030,6 +7052,11 @@ function App() {
   const youtubeLiveDiscoveryInFlightRef =
     useRef(
       new Map<string, Promise<YouTubeLiveDiscoveryResult>>()
+    );
+
+  const youtubeMetadataCacheRef =
+    useRef(
+      new SingleFlightTtlCache<SavedYouTubeChannel | YouTubeVideoRecord | null>(200)
     );
 
   const savedKickChannelsRef =
@@ -13753,6 +13780,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
   function clearTemporaryCaches() {
     channelCacheRef.current = [];
     youtubeLiveDiscoveryCacheRef.current.clear();
+    youtubeMetadataCacheRef.current.clear();
     youtubeLiveDiscoveryInFlightRef.current.clear();
     kickBadgeCatalogCacheRef.current = {};
     sevenTvGlobalEmotesRef.current = {};
@@ -18027,6 +18055,31 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     );
   }
 
+  function recordYouTubeCacheEvent(
+    event: RequestCacheEvent
+  ) {
+    setYoutubeQuotaTracker((current) => {
+      const normalized = normalizeYouTubeQuotaDay(current);
+      const next: YouTubeQuotaTracker = {
+        ...normalized,
+        cacheHits:
+          normalized.cacheHits +
+          (event === "hit" || event === "stale-hit" ? 1 : 0),
+        cacheMisses:
+          normalized.cacheMisses + (event === "miss" ? 1 : 0),
+        deduplicatedRequests:
+          normalized.deduplicatedRequests +
+          (event === "deduplicated" ? 1 : 0),
+        updatedAt: Date.now(),
+      };
+      localStorage.setItem(
+        YOUTUBE_QUOTA_TRACKER_KEY,
+        JSON.stringify(next)
+      );
+      return next;
+    });
+  }
+
   function markYouTubeQuotaExhausted(
     action:
       string
@@ -19278,7 +19331,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     return response;
   }
 
-  async function getYouTubeChannelRecord(
+  async function fetchYouTubeChannelRecord(
     hint: {
       kind:
         | "id"
@@ -19382,7 +19435,26 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     };
   }
 
-  async function getYouTubeVideoRecord(
+  async function getYouTubeChannelRecord(
+    hint: {
+      kind: "id" | "handle";
+      value: string;
+    }
+  ): Promise<SavedYouTubeChannel> {
+    const key = `youtube-channel:${hint.kind}:${hint.value.trim().toLowerCase()}`;
+    const value = await youtubeMetadataCacheRef.current.getOrLoad(
+      key,
+      () => fetchYouTubeChannelRecord(hint),
+      {
+        ttlMs: 6 * 60 * 60 * 1000,
+        staleWhileRevalidateMs: 18 * 60 * 60 * 1000,
+      },
+      recordYouTubeCacheEvent
+    );
+    return value as SavedYouTubeChannel;
+  }
+
+  async function fetchYouTubeVideoRecord(
     videoId: string
   ) {
     const params =
@@ -19414,6 +19486,23 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
     return data.items?.[0] ||
       null;
+  }
+
+  async function getYouTubeVideoRecord(
+    videoId: string
+  ): Promise<YouTubeVideoRecord | null> {
+    const value = await youtubeMetadataCacheRef.current.getOrLoad(
+      `youtube-video:${videoId.trim()}`,
+      () => fetchYouTubeVideoRecord(videoId),
+      {
+        ttlMs: 30 * 1000,
+        negativeTtlMs: 2 * 60 * 1000,
+        staleWhileRevalidateMs: 30 * 1000,
+        isNegative: (record) => record === null,
+      },
+      recordYouTubeCacheEvent
+    );
+    return value as YouTubeVideoRecord | null;
   }
 
   async function findActiveYouTubeLive(
@@ -19554,6 +19643,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       youtubeLiveDiscoveryCacheRef.current.get(cacheKey);
 
     if (cached && now < cached.nextCheckAt) {
+      recordYouTubeCacheEvent("hit");
       return cached.live;
     }
 
@@ -19561,8 +19651,11 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       youtubeLiveDiscoveryInFlightRef.current.get(cacheKey);
 
     if (inFlight) {
+      recordYouTubeCacheEvent("deduplicated");
       return inFlight;
     }
+
+    recordYouTubeCacheEvent("miss");
 
     const request =
       findActiveYouTubeLive(channel)
@@ -39625,6 +39718,9 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       >
         {[
           [ui("API-kall", "API calls"), youtubeQuotaNormalized.requestCount],
+          [ui("Cache-treff", "Cache hits"), youtubeQuotaNormalized.cacheHits],
+          [ui("Cache-bom", "Cache misses"), youtubeQuotaNormalized.cacheMisses],
+          [ui("Duplikater unngått", "Duplicates avoided"), youtubeQuotaNormalized.deduplicatedRequests],
           [ui("Feil", "Errors"), youtubeQuotaNormalized.errorCount],
           [ui("Begrensninger", "Rate limits"), youtubeQuotaNormalized.rateLimitCount],
         ].map(([label, value]) => (
