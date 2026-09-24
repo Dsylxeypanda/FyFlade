@@ -128,6 +128,13 @@ import {
 } from "./features/obs/overlaySettings";
 import { ObsOverlaySettingsPanel } from "./features/obs/ObsOverlaySettingsPanel";
 import { GlobalSearchDialog } from "./features/search/GlobalSearchDialog";
+import {
+  readPartyModeSettings,
+  usePartyMode,
+  writePartyModeSettings,
+  type PartyModeSettings,
+  type PartyStyle,
+} from "./features/appearance/partyMode";
 import { QuickCommandPalette } from "./features/commands/QuickCommandPalette";
 import { buildQuickCommands, isQuickCommandShortcut, readRecentCommands, rememberCommand, type QuickCommand } from "./features/commands/quickCommands";
 import { buildGlobalSearchIndex, searchGlobalIndex, type HistorySearchRow, type SearchDocument } from "./features/search/globalSearch";
@@ -5618,7 +5625,10 @@ function App() {
         localStorage.getItem(
           REDUCED_MOTION_KEY
         ) === "true"
-    );
+     );
+
+  const [partyModeSettings, setPartyModeSettings] = useState<PartyModeSettings>(readPartyModeSettings);
+  const partyMode = usePartyMode(partyModeSettings, reducedMotionEnabled || Boolean(FYFLATE_WINDOW_MODE));
 
   const [
     startupIntroEnabled,
@@ -13306,6 +13316,15 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     setTtsSettings(next);
     writeTtsSettings(next);
     if (!next.enabled && !next.hoverEnabled) stopTts();
+  }
+
+  function updatePartyModeSettings(patch: Partial<PartyModeSettings>) {
+    const next = { ...partyModeSettings, ...patch };
+    setPartyModeSettings(next);
+    writePartyModeSettings(next);
+    if ((!next.enabled || !next.reactToSystemAudio) && partyMode.captureStatus === "active") {
+      partyMode.stopAudioCapture();
+    }
   }
 
   function ttsMessageText(message: TwitchChatMessage) {
@@ -40827,12 +40846,15 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
   return (
     <div
-      className={
-        FYFLATE_WINDOW_MODE
-          ? "fyflate-detached-root"
-          : undefined
-      }
+      className={[
+        FYFLATE_WINDOW_MODE ? "fyflate-detached-root" : "",
+        !FYFLATE_WINDOW_MODE && partyModeSettings.enabled && !reducedMotionEnabled ? "fyflate-party-root" : "",
+        !FYFLATE_WINDOW_MODE && partyModeSettings.enabled && partyModeSettings.affectBackground ? "fyflade-party-background" : "",
+        !FYFLATE_WINDOW_MODE && partyModeSettings.enabled && partyModeSettings.affectChrome ? "fyflade-party-chrome" : "",
+        !FYFLATE_WINDOW_MODE && partyModeSettings.enabled ? `fyflade-party-${partyModeSettings.style}` : "",
+      ].filter(Boolean).join(" ") || undefined}
       style={{
+        ...partyMode.visualStyle,
         height:
           "100vh",
 
@@ -43965,6 +43987,76 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                   {linkKickError}
                 </div>
               )}
+
+              <div style={{ marginTop: 16, padding: 12, border: `1px solid ${theme.borderStrong}`, borderRadius: 7, background: theme.panelRaised }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  <div>
+                    <div style={{ color: theme.text, fontSize: 11, fontWeight: 800 }}>{ui("Party / Rave Mode", "Party / Rave Mode")}</div>
+                    <div style={{ color: theme.muted, fontSize: 9.5, lineHeight: "15px", marginTop: 3 }}>
+                      {ui("Visuelle effekter kan reagere på systemlyd. Lyd analyseres bare lokalt og blir aldri tatt opp eller lastet opp.", "Visual effects can react to system audio. Audio is analysed locally and is never recorded or uploaded.")}
+                    </div>
+                  </div>
+                  <button
+                    type="button" role="switch" aria-checked={partyModeSettings.enabled}
+                    onClick={() => updatePartyModeSettings({ enabled: !partyModeSettings.enabled })}
+                    style={{ width: 46, height: 25, padding: 3, border: `1px solid ${partyModeSettings.enabled ? theme.accent : theme.borderStrong}`, borderRadius: 999, background: partyModeSettings.enabled ? theme.accent : theme.input, cursor: "pointer", flexShrink: 0 }}
+                  >
+                    <span style={{ display: "block", width: 17, height: 17, marginLeft: partyModeSettings.enabled ? 21 : 0, borderRadius: "50%", background: readableTextColor(theme.accent), transition: reducedMotionEnabled ? "none" : "margin-left 120ms ease" }} />
+                  </button>
+                </div>
+
+                {partyModeSettings.enabled && (
+                  <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+                    {reducedMotionEnabled && (
+                      <div style={{ padding: 8, border: `1px solid ${theme.border}`, borderRadius: 5, color: theme.muted, fontSize: 9.5 }}>
+                        {ui("Party Mode er satt på pause fordi redusert bevegelse er slått på.", "Party Mode is paused because reduced motion is enabled.")}
+                      </div>
+                    )}
+                    <label style={{ display: "grid", gridTemplateColumns: "minmax(110px, 1fr) minmax(140px, 1.4fr)", alignItems: "center", gap: 9, color: theme.muted, fontSize: 10 }}>
+                      {ui("Stil", "Style")}
+                      <select value={partyModeSettings.style} onChange={(event) => updatePartyModeSettings({ style: event.target.value as PartyStyle })} style={{ height: 30, border: `1px solid ${theme.borderStrong}`, borderRadius: 4, padding: "0 8px", background: theme.input, color: theme.text }}>
+                        <option value="rainbow">Rainbow Flow</option><option value="bass">Bass Pulse</option><option value="neon">Neon Waves</option><option value="spectrum">Spectrum</option><option value="disco">Disco</option><option value="chill">Chill Ambient</option><option value="chaos">Full Chaos</option>
+                      </select>
+                    </label>
+                    {([
+                      ["intensity", ui("Intensitet", "Intensity"), partyModeSettings.intensity],
+                      ["movement", ui("Bevegelse", "Movement"), partyModeSettings.movement],
+                      ["glow", ui("Glød", "Glow"), partyModeSettings.glow],
+                      ["colorSpeed", ui("Fargehastighet", "Color speed"), partyModeSettings.colorSpeed],
+                    ] as const).map(([key, label, value]) => (
+                      <label key={key} style={{ display: "flex", alignItems: "center", gap: 8, color: theme.muted, fontSize: 10 }}>
+                        <span style={{ width: 92 }}>{label}</span>
+                        <input type="range" min="0" max="1" step="0.05" value={value} onChange={(event) => updatePartyModeSettings({ [key]: Number(event.target.value) })} style={{ flex: 1 }} />
+                        <span style={{ width: 28, textAlign: "right" }}>{Math.round(value * 100)}</span>
+                      </label>
+                    ))}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 12, color: theme.text, fontSize: 10 }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 5 }}><input type="checkbox" checked={partyModeSettings.affectBackground} onChange={(event) => updatePartyModeSettings({ affectBackground: event.target.checked })} />{ui("Bakgrunn", "Background")}</label>
+                      <label style={{ display: "flex", alignItems: "center", gap: 5 }}><input type="checkbox" checked={partyModeSettings.affectChrome} onChange={(event) => updatePartyModeSettings({ affectChrome: event.target.checked })} />{ui("Paneler", "Panels")}</label>
+                      <label style={{ display: "flex", alignItems: "center", gap: 5 }}><input type="checkbox" checked={partyModeSettings.reactToSystemAudio} onChange={(event) => updatePartyModeSettings({ reactToSystemAudio: event.target.checked })} />{ui("Reager på systemlyd", "React to system audio")}</label>
+                    </div>
+                    {partyModeSettings.reactToSystemAudio && (
+                      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                        {partyMode.captureStatus !== "active" ? (
+                          <button onClick={() => void partyMode.startAudioCapture()} style={smallButton}>{partyMode.captureStatus === "starting" ? ui("Starter…", "Starting…") : ui("Start lokal lydanalyse", "Start local audio analysis")}</button>
+                        ) : (
+                          <button onClick={partyMode.stopAudioCapture} style={smallButton}>{ui("Stopp lydanalyse", "Stop audio analysis")}</button>
+                        )}
+                        <span style={{ color: partyMode.captureStatus === "active" ? "#57c76f" : theme.muted, fontSize: 9.5 }}>
+                          {partyMode.captureStatus === "active" ? ui("Aktiv – kun lokal analyse", "Active – local analysis only") : ui("Velg skjermen med PC-lyd når Windows spør.", "Choose the screen with PC audio when Windows asks.")}
+                        </span>
+                      </div>
+                    )}
+                    {partyMode.captureError && <div style={{ color: "#ff8d86", fontSize: 9.5 }}>{partyMode.captureError}</div>}
+                    <label style={{ display: "grid", gridTemplateColumns: "minmax(110px, 1fr) minmax(140px, 1.4fr)", alignItems: "center", gap: 9, color: theme.muted, fontSize: 10 }}>
+                      FPS
+                      <select value={partyModeSettings.fps} onChange={(event) => updatePartyModeSettings({ fps: Number(event.target.value) as 15 | 30 | 60 })} style={{ height: 30, border: `1px solid ${theme.borderStrong}`, borderRadius: 4, padding: "0 8px", background: theme.input, color: theme.text }}>
+                        <option value={15}>15 ({ui("lav belastning", "low load")})</option><option value={30}>30</option><option value={60}>60</option>
+                      </select>
+                    </label>
+                  </div>
+                )}
+              </div>
 
               <div
                 style={{
