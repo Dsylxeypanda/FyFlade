@@ -9369,7 +9369,8 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
   useEffect(
     () => {
       if (
-        FYFLATE_WINDOW_MODE
+        FYFLATE_WINDOW_MODE ===
+        "user-card"
       ) {
         return;
       }
@@ -9377,19 +9378,22 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       const timer =
         window.setTimeout(
           () => {
-            void invoke(
-              "cleanup_chat_history",
-              {
-                maxAgeMs: chatHistoryRetentionMs(
-                  chatHistoryRetentionRef.current
-                ),
-              }
-            ).catch(
-              console.error
-            );
+            if (!FYFLATE_WINDOW_MODE) {
+              void invoke(
+                "cleanup_chat_history",
+                {
+                  maxAgeMs: chatHistoryRetentionMs(
+                    chatHistoryRetentionRef.current
+                  ),
+                }
+              ).catch(
+                console.error
+              );
 
-            preloadSavedChannelTabs();
+              preloadSavedChannelTabs();
+            }
 
+            void loadKickRelayConfig().catch(() => undefined);
             void restoreTwitchLogin();
             void restoreYouTubeLogin();
             void restoreKickLogin();
@@ -14630,9 +14634,11 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       ""
     );
 
-    void connectKickRelay(
-      accessToken
-    );
+    if (FYFLATE_WINDOW_MODE !== "settings") {
+      void connectKickRelay(
+        accessToken
+      );
+    }
   }
 
   async function kickRelayError(
@@ -18385,6 +18391,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     setYoutubeLoginError(
       ""
     );
+
   }
 
   async function exchangeYouTubeAuthorizationCode(
@@ -29994,14 +30001,16 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       user.profile_image_url
     );
 
-    await loadModeratedChannels(
-      tokenData.access_token,
-      user.id
-    );
+    if (FYFLATE_WINDOW_MODE !== "settings") {
+      await loadModeratedChannels(
+        tokenData.access_token,
+        user.id
+      );
 
-    await loadGlobalBadges(
-      tokenData.access_token
-    );
+      await loadGlobalBadges(
+        tokenData.access_token
+      );
+    }
 
     shouldReconnect.current =
       true;
@@ -30026,7 +30035,9 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       ""
     );
 
-    await restoreSavedChannels();
+    if (FYFLATE_WINDOW_MODE !== "settings") {
+      await restoreSavedChannels();
+    }
   }
 
   async function restoreTwitchLogin() {
@@ -30293,9 +30304,11 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       false
     );
 
-    setShowSettings(
-      false
-    );
+    if (FYFLATE_WINDOW_MODE !== "settings") {
+      setShowSettings(
+        false
+      );
+    }
 
     setShowEmotePicker(
       false
@@ -30467,9 +30480,11 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       false
     );
 
-    setShowSettings(
-      false
-    );
+    if (FYFLATE_WINDOW_MODE !== "settings") {
+      setShowSettings(
+        false
+      );
+    }
 
     setShowEmotePicker(
       false
