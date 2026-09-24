@@ -1,5 +1,5 @@
 export type SavedWindowGeometry = {
-  version: 1;
+  version: 2;
   x: number;
   y: number;
   width: number;
@@ -14,7 +14,7 @@ export type MonitorBounds = {
 };
 
 export const SETTINGS_WINDOW_GEOMETRY_KEY =
-  "fyflate.window.settings.geometry.v1";
+  "fyflate.window.settings.geometry.v2";
 
 export function normalizeSavedWindowGeometry(
   value: unknown
@@ -22,7 +22,7 @@ export function normalizeSavedWindowGeometry(
   if (!value || typeof value !== "object") return null;
   const item = value as Partial<SavedWindowGeometry>;
   if (
-    item.version !== 1 ||
+    item.version !== 2 ||
     !Number.isFinite(item.x) ||
     !Number.isFinite(item.y) ||
     !Number.isFinite(item.width) ||
@@ -31,7 +31,7 @@ export function normalizeSavedWindowGeometry(
     return null;
   }
   return {
-    version: 1,
+    version: 2,
     x: Math.round(item.x!),
     y: Math.round(item.y!),
     width: Math.max(620, Math.min(3840, Math.round(item.width!))),
@@ -69,7 +69,7 @@ export function fitGeometryToMonitors(
   const width = Math.min(geometry.width, Math.max(620, monitor.width));
   const height = Math.min(geometry.height, Math.max(430, monitor.height));
   return {
-    version: 1,
+    version: 2,
     width,
     height,
     x: Math.max(monitor.x, Math.min(geometry.x, monitor.x + monitor.width - Math.min(width, 220))),

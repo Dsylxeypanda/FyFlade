@@ -7505,7 +7505,7 @@ function App() {
         ]).then(([position, size]) => {
           if (stopped) return;
           writeSettingsWindowGeometry({
-            version: 1,
+            version: 2,
             x: position.x,
             y: position.y,
             width: size.width,
@@ -36111,19 +36111,19 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                   ),
             width:
               isSettings
-                ? 900
+                ? 760
                 : 520,
             height:
               isSettings
-                ? 650
+                ? 580
                 : 560,
             minWidth:
               isSettings
-                ? 620
+                ? 560
                 : 390,
             minHeight:
               isSettings
-                ? 430
+                ? 420
                 : 430,
             center:
               true,
@@ -36154,21 +36154,50 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       if (isSettings) {
         void detached.once("tauri://created", () => {
           const saved = readSettingsWindowGeometry();
-          if (!saved) return;
           void availableMonitors()
-            .then((monitors) => {
-              const fitted = fitGeometryToMonitors(
-                saved,
-                monitors.map((monitor) => ({
+            .then(async (monitors) => {
+              const bounds = monitors.map((monitor) => ({
                   x: monitor.position.x,
                   y: monitor.position.y,
                   width: monitor.size.width,
                   height: monitor.size.height,
-                }))
-              );
-              return Promise.all([
-                detached.setSize(new PhysicalSize(fitted.width, fitted.height)),
-                detached.setPosition(new PhysicalPosition(fitted.x, fitted.y)),
+                }));
+              if (saved) {
+                const fitted = fitGeometryToMonitors(saved, bounds);
+                await Promise.all([
+                  detached.setSize(new PhysicalSize(fitted.width, fitted.height)),
+                  detached.setPosition(new PhysicalPosition(fitted.x, fitted.y)),
+                ]);
+                return;
+              }
+
+              const mainWindow = await WebviewWindow.getByLabel("main");
+              if (!mainWindow) return;
+              const [mainPosition, mainSize] = await Promise.all([
+                mainWindow.outerPosition(),
+                mainWindow.outerSize(),
+              ]);
+              const width = 760;
+              const height = 580;
+              const gap = 12;
+              const monitor = bounds.find((item) =>
+                mainPosition.x >= item.x &&
+                mainPosition.x < item.x + item.width &&
+                mainPosition.y >= item.y &&
+                mainPosition.y < item.y + item.height
+              ) || bounds[0];
+              if (!monitor) return;
+              const right = mainPosition.x + mainSize.width + gap;
+              const left = mainPosition.x - width - gap;
+              const x = right + width <= monitor.x + monitor.width
+                ? right
+                : left >= monitor.x
+                  ? left
+                  : Math.max(monitor.x, monitor.x + monitor.width - width - gap);
+              const y = Math.max(monitor.y, Math.min(mainPosition.y, monitor.y + monitor.height - height));
+              await Promise.all([
+                detached.setSize(new PhysicalSize(width, height)),
+                detached.setPosition(new PhysicalPosition(x, y)),
               ]);
             })
             .catch(() => undefined);
