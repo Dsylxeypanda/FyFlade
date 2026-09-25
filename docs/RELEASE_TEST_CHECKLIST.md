@@ -78,9 +78,10 @@ This is the final release gate for the Windows installer and portable ZIP. A pub
 
 ## Installer, portable, and updates
 
-- [ ] Validate the existing updater key locally with `scripts/validate-fyflade-updater-key.ps1`; do not save its password in the repository or chat.
+- [x] Validate the existing updater key locally with `scripts/validate-fyflade-updater-key.ps1`; the password was not saved in the repository or chat.
 - [ ] Build the installer with `scripts/build-fyflade-release.ps1`; verify it with `scripts/verify-fyflade-release.ps1`.
-- [ ] Confirm the installer EXE has a valid Windows Authenticode signature and its Tauri updater `.sig` is present.
+- [x] Confirm the Tauri updater `.sig` is present for the current installer.
+- [ ] Confirm the installer EXE has a valid Windows Authenticode signature.
 - [ ] Install an older signed test version and complete a real signed in-app update without losing data.
 - [ ] Build the portable ZIP with `scripts/build-fyflade-portable.ps1`; verify it with `scripts/verify-fyflade-portable.ps1`.
 - [ ] Confirm portable FyFlade starts from an extracted writable folder, identifies itself as portable in Settings, and disables installer-based automatic updates.

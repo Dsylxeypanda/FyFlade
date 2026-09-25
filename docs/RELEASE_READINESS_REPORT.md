@@ -64,7 +64,7 @@ Before public release, the Google OAuth consent configuration must still be conf
 - Full optimized Windows desktop build: passed.
 - Combined release gate with desktop build: passed.
 - Fresh portable ZIP: structure, portable marker, product metadata, and SHA-256 verification passed in explicit unsigned-development mode.
-- Fresh NSIS installer: built successfully; updater signing stopped because the release-key password was not supplied to the non-interactive build.
+- Fresh NSIS installer and Tauri updater signature: built successfully with the existing protected release key.
 
 The frontend build has one non-blocking large-bundle warning (about 771 kB before gzip and 222 kB gzipped). This is a future startup optimization, not a correctness failure.
 
@@ -75,17 +75,18 @@ These files are for local testing only and must not be published:
 - Portable ZIP: `release/portable/FyFlade-1.0.0-windows-x64-portable.zip`
   - SHA-256: `E9D4ABA48D3D704831AFE43CEC741F0BB91D8ECC0B8520C3E2E5D3F8A202ECC5`
 - NSIS installer: `src-tauri/target/release/bundle/nsis/FyFlade_1.0.0_x64-setup.exe`
-  - SHA-256: `E75FF9F8DB672FA73726D35A08BBA379FA02ED3DAD52797998DEB26385EA6F8F`
+  - SHA-256: `CDE5870372BF8E668A2E57F58C1B386BC163DFA6C1ABE150CAFFFAE42D459252`
+  - Tauri updater signature: present (`416` bytes)
+  - Signature-file SHA-256: `3D0CA9BE39A4F4A67461A016F9B5CF40EBED94ADF432218C49168C809E2BF2F0`
 
 Both executable builds are currently `NotSigned`. Old artifacts were moved into timestamped folders under `release/archive` rather than overwritten.
 
 ## Remaining public-release blockers
 
-1. Enter the existing Tauri updater-key password locally and validate it with `scripts/validate-fyflade-updater-key.ps1`. The matching private/public key files are present and Git-ignored; the password must never be committed or sent in chat.
-2. Obtain/configure a trusted Windows Authenticode code-signing certificate.
-3. Build both public artifacts, verify the updater `.sig`, verify Authenticode, and publish new hashes.
-4. Complete every relevant manual checkbox on a clean Windows user/PC with real Twitch, Kick, YouTube, OBS, multi-monitor, portable, install/uninstall, and update testing.
-5. Confirm the Google OAuth consent screen and official client work for an unrelated clean account.
-6. Test one genuine signed update from an older signed build without losing data.
+1. Obtain/configure a trusted Windows Authenticode code-signing identity or choose a Store/open-source signing distribution path.
+2. Rebuild both public artifacts, verify Authenticode, and publish their final hashes.
+3. Complete every relevant manual checkbox on a clean Windows user/PC with real Twitch, Kick, YouTube, OBS, multi-monitor, portable, install/uninstall, and update testing.
+4. Confirm the Google OAuth consent screen and official client work for an unrelated clean account.
+5. Test one genuine signed update from an older signed build without losing data.
 
 Until these pass, FyFlade should be described as a test candidate rather than a finished public release.
