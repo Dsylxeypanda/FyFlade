@@ -32,8 +32,20 @@ if (-not $SkipBuild) {
     }
   }
 
+  if ([string]::IsNullOrWhiteSpace($youtubeClientId)) {
+    $youtubeConfigPath = Join-Path $projectRoot "src\youtubeConfig.ts"
+    $youtubeConfigSource = Get-Content -LiteralPath $youtubeConfigPath -Raw
+    $embeddedClientId = [regex]::Match(
+      $youtubeConfigSource,
+      '["''](?<id>[0-9A-Za-z._-]+\.apps\.googleusercontent\.com)["'']'
+    )
+    if ($embeddedClientId.Success) {
+      $youtubeClientId = $embeddedClientId.Groups['id'].Value
+    }
+  }
+
   if ($youtubeClientId -notmatch '^[0-9A-Za-z._-]+\.apps\.googleusercontent\.com$') {
-    throw "The official FyFlade YouTube OAuth Client ID is missing. Set it before creating a portable release."
+    throw "The official FyFlade YouTube OAuth Client ID is missing or malformed. Configure the embedded client ID or a release-only override before creating a portable release."
   }
 
   $previousCargoHome = $env:CARGO_HOME

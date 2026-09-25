@@ -28,6 +28,15 @@ try {
     throw "The frontend and desktop technical versions differ."
   }
 
+  $youtubeConfigSource = Get-Content -LiteralPath "src\youtubeConfig.ts" -Raw
+  $embeddedYouTubeClientId = [regex]::Match(
+    $youtubeConfigSource,
+    '["''](?<id>[0-9A-Za-z._-]+\.apps\.googleusercontent\.com)["'']'
+  )
+  if (-not $embeddedYouTubeClientId.Success) {
+    throw "The official embedded FyFlade YouTube OAuth Client ID is missing or malformed."
+  }
+
   foreach ($requiredPath in @(
     "PORTABLE.md",
     "SECURITY.md",
@@ -62,6 +71,7 @@ try {
     FrontendBuild = "Passed"
     RustTests = "Passed"
     RelayTypeCheck = "Passed"
+    EmbeddedYouTubeOAuth = "Passed"
     DesktopBuild = if ($IncludeDesktopBuild) { "Passed" } else { "Not requested" }
     ManualReleaseChecklist = "Required"
   }

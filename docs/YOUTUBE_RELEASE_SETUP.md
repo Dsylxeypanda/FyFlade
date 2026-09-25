@@ -18,9 +18,11 @@ Official references:
 - <https://developers.google.com/youtube/v3/getting-started>
 - <https://support.google.com/cloud/answer/13464321>
 
-## Release-machine configuration
+## Application and release-machine configuration
 
-Copy `.env.example` to `.env.production.local` and set:
+FyFlade's official desktop OAuth Client ID is embedded in `src/youtubeConfig.ts`. This public identifier is used automatically when a local environment file is absent, so ordinary users never configure Google Cloud and a clean release machine does not silently disable YouTube.
+
+For a deliberate release-only override, copy `.env.example` to `.env.production.local` and set:
 
 ```text
 VITE_YOUTUBE_OAUTH_CLIENT_ID=the-fyflade-desktop-client-id.apps.googleusercontent.com
@@ -28,7 +30,7 @@ VITE_YOUTUBE_OAUTH_CLIENT_ID=the-fyflade-desktop-client-id.apps.googleuserconten
 
 The client secret is optional for Google's installed-app flow with PKCE. If the configured client requires it, set `VITE_YOUTUBE_OAUTH_CLIENT_SECRET` too. Values prefixed with `VITE_` are bundled into the desktop client and must never be treated as confidential. User refresh tokens are separate and remain in Windows Credential Manager on each user's PC.
 
-The release script validates the Client ID and stops before building if it is missing or malformed.
+The release scripts validate the effective Client ID (override first, embedded fallback) and stop before building if it is missing or malformed.
 
 ## Manual release test
 

@@ -1,109 +1,91 @@
 # FyFlade 1.0 release readiness report
 
-Date: 2026-09-20
+Date: 2026-09-25
 
 ## Decision
 
-The codebase passes its automated production, Rust, relay, and desktop-build gates. FyFlade is ready for controlled hands-on testing, but it is **not ready for a public download yet**. Public release remains blocked by a Windows Authenticode certificate, the official production YouTube OAuth client configuration, a real signed updater test, and the clean-machine/manual platform matrix in `RELEASE_TEST_CHECKLIST.md`.
+The current source passes every automated release gate and fresh unsigned Windows test artifacts have been produced. FyFlade is ready for controlled hands-on testing, but it is **not ready for public download yet**. Public release is still blocked by release signing and the clean-machine/manual platform test matrix in `RELEASE_TEST_CHECKLIST.md`.
 
-## 1. What changed
+No unsigned artifact should be uploaded to the FyFlade website or update endpoint.
 
-- Product-facing branding, metadata, onboarding, Settings structure, banners, chat retention, highlights, sounds, local TTS, profiles, docking, detached Settings, security diagnostics, bounded caches, translation disclosure, and portable distribution were completed in phased commits.
-- YouTube sign-in now uses a build-time official FyFlade OAuth client ID in public builds. The old per-user Google Cloud setup panel and guide were removed from the active application source.
-- YouTube chat reading uses `liveChatMessages.streamList` instead of rapid message polling.
-- A separate portable Windows packaging/verification path now exists. The app detects its portable marker and disables installer-based updating.
-- A repeatable automated release gate and a clean-machine manual release checklist were added.
+## Current product state
 
-## 2. What was preserved
+- Product name: FyFlade
+- Display version: 1.0
+- Technical version: 1.0.0
+- Twitch, Kick, and YouTube chat are integrated, including combined chat and `/t`, `/k`, and `/y` routing.
+- Settings opens as its own movable window.
+- User-card popouts, profiles, per-channel settings, Smart inbox, moderation, OBS dock/browser view, portable mode, automatic updater support, chat history, highlights, TTS, and Party / Rave Mode are present.
+- The removed Move/Edit Layout feature and Settings-section reordering are intentionally not release requirements.
+- Party / Rave Mode uses native Windows system-audio capture and can animate the whole application. It remains off by default.
 
-Combined Twitch/Kick/YouTube chat, `/t` `/k` `/y` routing, platform and 7TV badges/cosmetics, channel tabs and reordering, per-channel settings, profiles, layout/split panes/docking, user-card popouts, moderation, local nicknames, ignores, Smart inbox, highlights, OBS dock/browser view, and existing saved user data remain supported.
+## Cache and resource protection
 
-## 3. Migrations and compatibility
+FyFlade has real cache and rate-protection mechanisms:
 
-- Existing localStorage keys beginning with `chatnest.` are intentionally retained. Renaming them without a migration would reset channels, layouts, profiles, themes, and chat settings.
-- The Windows credential service name `ChatNest` is intentionally retained internally so existing refresh tokens do not disappear. It is not shown as product branding.
-- The Tauri identifier `com.stigm.chatnest` is intentionally retained so Windows and WebView storage continue to identify the existing application.
-- The deployed relay/updater hostname contains `chatnest-kick-relay`; changing it requires a coordinated endpoint and updater migration and is not visible as the product name.
-- Old backup-import files with `app: "ChatNest"` remain accepted so users can restore older backups.
+- Shared requests use a bounded single-flight TTL cache with positive and negative caching, stale-while-revalidate behavior, duplicate-request suppression, and a default maximum of 200 entries.
+- Channel/live metadata is deduplicated and the persisted channel cache is bounded.
+- YouTube passive chat uses `liveChatMessages.streamList`; offline discovery starts around ten minutes and backs off up to one hour.
+- Emote, profile, and 7TV data use bounded caches, and Settings includes a temporary-cache clearing action.
+- Optional chat history is stored locally with 24-hour, 48-hour, 7-day, 30-day, or unlimited retention. The default is 24 hours and expired data is cleaned automatically.
 
-## 4. ChatNest branding status
+This means an offline channel is not repeatedly queried like a live channel, and repeated lookups do not continuously consume avoidable network/API work.
 
-No known active user-facing screen uses ChatNest as the product name. Remaining references are internal compatibility identifiers, an existing Cloudflare hostname, or tracked historical source backups. The physical repository folder still has the old name; it is not included as the installed or portable product name.
+## Security and privacy
 
-## 5. YouTube architecture
+- Refresh tokens and supported client secrets are stored through Windows Credential Manager via the native keyring integration.
+- Secrets are excluded from backups and portable packages.
+- Sensitive diagnostics are redacted.
+- Anonymous usage reporting is opt-in and is not required for FyFlade to work.
+- Portable folders do not carry account access to another PC.
+- Translation requires a disclosure before selected message text is sent to an external provider.
 
-Public users click **Log in with YouTube** and use FyFlade's configured OAuth client. They do not create a Google Cloud project or paste credentials.
+This is defense in depth, not protection against malware already running as the same Windows user. A malicious same-user process may be able to ask Windows for credentials belonging to that user.
 
-The implementation uses:
+## YouTube configuration
 
-- `channels.list` for the signed-in profile and channel lookup;
-- `playlistItems.list` plus a batched `videos.list` to discover an active stream;
-- `videos.list` for an explicitly supplied video;
-- `liveChatMessages.streamList` for passive live-chat reading;
-- `liveChatMessages.insert` only when the user sends a message;
-- `liveChatBans.insert/delete` and `liveChatMessages.delete` only for explicit moderation actions;
-- Google's OAuth token endpoint for authorization-code exchange and refresh.
+The official public OAuth client identifier is embedded in the current application build. It is a public identifier, not a secret. Users click **Log in** and do not create their own Google Cloud project or paste credentials.
 
-## 6. Quota and reconnect improvements
+Before public release, the Google OAuth consent configuration must still be confirmed as production-ready and tested from a clean Google account that has never used FyFlade.
 
-- Passive chat uses the supported gRPC stream and a continuation token instead of one-second REST polling.
-- Offline discovery starts at a ten-minute interval and backs off up to one hour.
-- Channel/live metadata is cached and requests are batched where practical.
-- Streams stop when the tab generation is no longer current or YouTube reports the broadcast offline.
-- Transient reconnects use capped exponential backoff up to 30 seconds, preventing tight retry loops.
-- API calls, endpoints/actions, errors, reconnect state, rate-limit/quota events, and known unit costs are recorded locally. Unknown costs are not invented.
-- Twitch, Kick, and YouTube status is consolidated in Settings under Quota & Usage.
+## Compatibility kept intentionally
 
-## 7. Security and privacy
+- Existing local-storage keys beginning with `chatnest.` remain so upgrades do not erase user settings.
+- The Windows Credential Manager service name `ChatNest` remains internally so existing sign-ins continue to work.
+- The Tauri identifier `com.stigm.chatnest` remains to preserve Windows/WebView storage identity.
+- The existing relay/updater hostname contains `chatnest-kick-relay`; it is infrastructure, not visible product branding.
+- Older backup files with `app: "ChatNest"` remain importable.
 
-- Refresh tokens and supported client secrets use Windows Credential Manager and are excluded from backups.
-- Sensitive diagnostics are redacted, temporary caches are bounded, and OBS output is kept separate from credentials/settings UI.
-- Anonymous usage is opt-in and is not needed for the app to work.
-- Portable folders do not contain credentials; copying a portable ZIP does not copy account access.
-- Translation requires a one-time disclosure before selected message text is sent to an external provider.
-
-This is defense in depth, not a guarantee against a malicious process already running as the same Windows user. Windows malware with the user's permissions may be able to request that Windows return that user's stored credentials.
-
-## 8. Automated tests run
+## Automated verification on 2026-09-25
 
 - `npm run build`: passed.
-- `cargo test --manifest-path src-tauri/Cargo.toml`: passed, 3 tests.
+- Rust tests: passed, 3 of 3.
 - Cloudflare Kick relay TypeScript check: passed.
-- `npx tauri build --no-bundle`: passed and produced `fyflade.exe` with product name FyFlade and version 1.0.0.
-- Portable packaging and verification: passed in explicit unsigned-development mode; marker, product metadata, archive structure, and SHA-256 were verified.
-- The combined release gate script passed.
+- Full optimized Windows desktop build: passed.
+- Combined release gate with desktop build: passed.
+- Fresh portable ZIP: structure, portable marker, product metadata, and SHA-256 verification passed in explicit unsigned-development mode.
+- Fresh NSIS installer: built successfully; updater signing correctly stopped because the private release key was unavailable.
 
-The Vite build reports a non-blocking large-chunk warning (about 749 kB before gzip, about 216 kB gzipped). It is a future startup optimization, not a build failure.
+The frontend build has one non-blocking large-bundle warning (about 771 kB before gzip and 222 kB gzipped). This is a future startup optimization, not a correctness failure.
 
-## 9. Manual tests still required
+## Local unsigned test artifacts
 
-The full matrix is in `RELEASE_TEST_CHECKLIST.md`. It includes real Twitch/Kick/YouTube OAuth and live/offline chat, badges/emotes, restart persistence, Windows restart, multi-monitor/detached windows, OBS, tutorial, accessibility/scaling, backup recovery, installed update, uninstall, and portable behavior on a second Windows account.
+These files are for local testing only and must not be published:
 
-These cannot be truthfully replaced by source inspection because they depend on real accounts, live platform responses, OBS, Windows shell integration, and signed artifacts.
+- Portable ZIP: `release/portable/FyFlade-1.0.0-windows-x64-portable.zip`
+  - SHA-256: `E9D4ABA48D3D704831AFE43CEC741F0BB91D8ECC0B8520C3E2E5D3F8A202ECC5`
+- NSIS installer: `src-tauri/target/release/bundle/nsis/FyFlade_1.0.0_x64-setup.exe`
+  - SHA-256: `E75FF9F8DB672FA73726D35A08BBA379FA02ED3DAD52797998DEB26385EA6F8F`
 
-## 10. Installer, portable, and updater status
+Both executable builds are currently `NotSigned`. Old artifacts were moved into timestamped folders under `release/archive` rather than overwritten.
 
-- Installer configuration and updater signing-key checks exist, but no current public installer was approved in this run.
-- Portable development ZIP works structurally and is available locally under the ignored `release/portable` directory.
-- The current machine has the Tauri updater key but no usable Windows code-signing certificate.
-- The current workspace does not contain the production YouTube OAuth environment file.
-- The portable development executable is unsigned and must not be uploaded.
-- A real update from an older signed installed build to the new signed build remains mandatory.
+## Remaining public-release blockers
 
-## 11. Known limitations
-
-- The main frontend bundle should eventually be split to improve cold-start loading.
-- Historical backup source files remain tracked in the repository but are not part of the compiled UI.
-- Live translation currently uses an external-provider handoff with disclosure; a fully embedded translation engine is not included.
-- Actual Google project-wide quota cannot be read reliably by every end user, so FyFlade reports observed local calls/status and labels unknown values rather than guessing.
-
-## 12. Next release actions
-
-1. Configure the official production YouTube OAuth client ID locally for the release build.
+1. Restore or securely provide the private Tauri updater-signing key that matches the public key already compiled into FyFlade.
 2. Obtain/configure a trusted Windows Authenticode code-signing certificate.
-3. Build and verify signed installer and portable artifacts.
-4. Run every clean-machine/manual checkbox and fix any failure.
-5. Test one real signed updater transition.
-6. Publish exact SHA-256 hashes, privacy/security text, and only the verified artifacts.
+3. Build both public artifacts, verify the updater `.sig`, verify Authenticode, and publish new hashes.
+4. Complete every relevant manual checkbox on a clean Windows user/PC with real Twitch, Kick, YouTube, OBS, multi-monitor, portable, install/uninstall, and update testing.
+5. Confirm the Google OAuth consent screen and official client work for an unrelated clean account.
+6. Test one genuine signed update from an older signed build without losing data.
 
-Until those steps pass, FyFlade should be described as ready for controlled testing, not as a finished public release.
+Until these pass, FyFlade should be described as a test candidate rather than a finished public release.

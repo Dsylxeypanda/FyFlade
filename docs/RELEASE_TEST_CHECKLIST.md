@@ -9,7 +9,7 @@ This is the final release gate for the Windows installer and portable ZIP. A pub
 - [x] Cloudflare Kick relay type check
 - [x] Distribution metadata agrees on FyFlade and technical version 1.0.0
 - [x] Portable marker behavior has a Rust regression test
-- [ ] Re-run the complete gate immediately before release: `scripts/test-fyflade-release.ps1 -IncludeDesktopBuild`
+- [x] Re-run the complete gate on 2026-09-25: `scripts/test-fyflade-release.ps1 -IncludeDesktopBuild`
 
 ## Clean install and first start
 
@@ -38,10 +38,9 @@ This is the final release gate for the Windows installer and portable ZIP. A pub
 - [ ] Confirm `/t `, `/k `, and `/y ` route a combined-tab message to the selected platform.
 - [ ] Confirm quota/status views explain YouTube and Kick behavior without exposing secrets.
 
-## Channels, layouts, windows, and profiles
+## Channels, windows, and profiles
 
 - [ ] Add, remove, reorder, group, favorite, combine, and separate channels; restart and confirm the order remains.
-- [ ] Drag a full channel tab surface, dock panes in every supported target, resize panes, and restore the layout after restart.
 - [ ] Open multiple user-card popouts, move them outside the main window, and confirm platform/channel badges identify each one.
 - [ ] Move and resize the Settings window on multiple monitors; restart and confirm it returns on-screen.
 - [ ] Save, switch, rename, export, import, and delete profiles; confirm active profile changes auto-save.
@@ -61,6 +60,14 @@ This is the final release gate for the Windows installer and portable ZIP. A pub
 - [ ] Confirm OBS inclusion/exclusion follows global and per-channel settings.
 - [ ] Check keyboard-only navigation, visible focus, Escape behavior, Ctrl+K, global search, high contrast, font scaling, and reduced motion.
 - [ ] Check the smallest supported window size, 100/125/150/200% Windows scaling, and at least a two-monitor setup.
+
+## Appearance and Party / Rave Mode
+
+- [ ] Confirm Party / Rave Mode is off by default and remains off after a clean first start.
+- [ ] Test every visual style, scope, sensitivity, bass sensitivity, glow, and movement control.
+- [ ] Enable React to system audio while Spotify or another Windows audio source plays; confirm the full UI reacts and stops reacting when disabled.
+- [ ] Confirm audio capture is released when Party / Rave Mode or FyFlade closes.
+- [ ] Confirm normal themes, text readability, controls, and reduced-motion behavior remain usable after Party / Rave Mode is disabled.
 
 ## Backup, language, translation, and recovery
 

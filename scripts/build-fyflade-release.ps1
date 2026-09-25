@@ -83,8 +83,20 @@ if ([string]::IsNullOrWhiteSpace($youtubeClientId) -and (Test-Path -LiteralPath 
   }
 }
 
+if ([string]::IsNullOrWhiteSpace($youtubeClientId)) {
+  $youtubeConfigPath = Join-Path $projectRoot "src\youtubeConfig.ts"
+  $youtubeConfigSource = Get-Content -LiteralPath $youtubeConfigPath -Raw
+  $embeddedClientId = [regex]::Match(
+    $youtubeConfigSource,
+    '["''](?<id>[0-9A-Za-z._-]+\.apps\.googleusercontent\.com)["'']'
+  )
+  if ($embeddedClientId.Success) {
+    $youtubeClientId = $embeddedClientId.Groups['id'].Value
+  }
+}
+
 if ($youtubeClientId -notmatch '^[0-9A-Za-z._-]+\.apps\.googleusercontent\.com$') {
-  throw "The official FyFlade YouTube OAuth Client ID is missing. Copy .env.example to .env.production.local and set VITE_YOUTUBE_OAUTH_CLIENT_ID before creating a public release."
+  throw "The official FyFlade YouTube OAuth Client ID is missing or malformed. Configure the embedded client ID or a release-only override before creating a public release."
 }
 
 $releasePassword = Read-FyFladeSigningPassword "Updater signing password"
