@@ -64,7 +64,7 @@ Before public release, the Google OAuth consent configuration must still be conf
 - Full optimized Windows desktop build: passed.
 - Combined release gate with desktop build: passed.
 - Fresh portable ZIP: structure, portable marker, product metadata, and SHA-256 verification passed in explicit unsigned-development mode.
-- Fresh NSIS installer: built successfully; updater signing correctly stopped because the private release key was unavailable.
+- Fresh NSIS installer: built successfully; updater signing stopped because the release-key password was not supplied to the non-interactive build.
 
 The frontend build has one non-blocking large-bundle warning (about 771 kB before gzip and 222 kB gzipped). This is a future startup optimization, not a correctness failure.
 
@@ -81,7 +81,7 @@ Both executable builds are currently `NotSigned`. Old artifacts were moved into 
 
 ## Remaining public-release blockers
 
-1. Restore or securely provide the private Tauri updater-signing key that matches the public key already compiled into FyFlade.
+1. Enter the existing Tauri updater-key password locally and validate it with `scripts/validate-fyflade-updater-key.ps1`. The matching private/public key files are present and Git-ignored; the password must never be committed or sent in chat.
 2. Obtain/configure a trusted Windows Authenticode code-signing certificate.
 3. Build both public artifacts, verify the updater `.sig`, verify Authenticode, and publish new hashes.
 4. Complete every relevant manual checkbox on a clean Windows user/PC with real Twitch, Kick, YouTube, OBS, multi-monitor, portable, install/uninstall, and update testing.
