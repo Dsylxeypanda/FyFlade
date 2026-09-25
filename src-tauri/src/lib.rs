@@ -10,6 +10,9 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::{Emitter, Manager};
 
+mod party_audio;
+use party_audio::{start_party_audio_capture, stop_party_audio_capture};
+
 #[cfg(test)]
 mod search_history_tests;
 
@@ -3270,7 +3273,9 @@ pub fn run() {
                 check_chat_history_storage,
                 list_chat_history_storage,
                 clear_all_chat_history,
-                clear_channel_chat_history
+                clear_channel_chat_history,
+                start_party_audio_capture,
+                stop_party_audio_capture
             ],
         )
         .build(
@@ -3283,6 +3288,7 @@ pub fn run() {
             |_app_handle, event| {
                 if let tauri::RunEvent::Exit = event {
                     stop_kick_webhook_tunnel();
+                    let _ = stop_party_audio_capture();
                 }
             }
         );

@@ -113,7 +113,7 @@ export function PartyModePanel({ language, settings, reducedMotion, captureStatu
                   ? <button onClick={onStopAudio} style={button}>{ui("Stopp lydanalyse", "Stop audio analysis")}</button>
                   : <button onClick={onStartAudio} disabled={captureStatus === "starting"} style={button}>{captureStatus === "starting" ? ui("Starter…", "Starting…") : ui("Start lokal lydanalyse", "Start local audio analysis")}</button>}
                 <span style={{ color: captureStatus === "active" ? "#57c76f" : colors.muted, fontSize: 9.5 }}>
-                  {captureStatus === "active" ? ui("Aktiv – kun lokal analyse", "Active – local analysis only") : ui("Velg skjermen med PC-lyd når Windows spør.", "Choose the screen with PC audio when Windows asks.")}
+                  {captureStatus === "active" ? ui("Aktiv – Spotify og annen PC-lyd analyseres lokalt", "Active – Spotify and other PC audio is analysed locally") : ui("Bruker Windows-lyden direkte – ingen skjermdeling.", "Uses Windows audio directly – no screen sharing.")}
                 </span>
               </div>
             </>

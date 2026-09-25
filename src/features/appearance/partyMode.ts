@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import "./partyMode.css";
 
 export type PartyStyle = "rainbow" | "bass" | "neon" | "spectrum" | "disco" | "chill" | "chaos";
@@ -76,52 +78,55 @@ type PartyLevels = { energy: number; bass: number; phase: number };
 export function usePartyMode(settings: PartyModeSettings, reducedMotion: boolean) {
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
-  const streamRef = useRef<MediaStream | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
+  const nativeLevelsRef = useRef({ energy: 0, bass: 0 });
   const [captureStatus, setCaptureStatus] = useState<"off" | "starting" | "active" | "error">("off");
   const [captureError, setCaptureError] = useState("");
   const [levels, setLevels] = useState<PartyLevels>({ energy: 0.18, bass: 0.12, phase: 0 });
 
   const stopAudioCapture = useCallback(() => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    void audioContextRef.current?.close();
-    audioContextRef.current = null;
-    analyserRef.current = null;
+    nativeLevelsRef.current = { energy: 0, bass: 0 };
+    void invoke("stop_party_audio_capture").catch(() => undefined);
     setCaptureStatus("off");
   }, []);
 
   const startAudioCapture = useCallback(async () => {
-    stopAudioCapture();
     setCaptureStatus("starting");
     setCaptureError("");
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-      if (!stream.getAudioTracks().length) {
-        stream.getTracks().forEach((track) => track.stop());
-        throw new Error("No system audio was shared.");
-      }
-      const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AudioContextClass) throw new Error("Audio analysis is not supported on this PC.");
-      const context = new AudioContextClass();
-      const analyser = context.createAnalyser();
-      analyser.fftSize = 512;
-      analyser.smoothingTimeConstant = 0.5;
-      context.createMediaStreamSource(stream).connect(analyser);
-      stream.getVideoTracks().forEach((track) => { track.enabled = false; });
-      stream.getTracks().forEach((track) => track.addEventListener("ended", stopAudioCapture, { once: true }));
-      streamRef.current = stream;
-      audioContextRef.current = context;
-      analyserRef.current = analyser;
+      await invoke("start_party_audio_capture");
       setCaptureStatus("active");
     } catch (error) {
       setCaptureStatus("error");
       setCaptureError(error instanceof Error ? error.message : "System audio could not be started.");
     }
-  }, [stopAudioCapture]);
+  }, []);
 
-  useEffect(() => stopAudioCapture, [stopAudioCapture]);
+  useEffect(() => {
+    let disposed = false;
+    let unlistenLevels: (() => void) | undefined;
+    let unlistenError: (() => void) | undefined;
+    void listen<{ energy: number; bass: number }>("fyflate://party-audio-levels", (event) => {
+      nativeLevelsRef.current = event.payload;
+      setCaptureStatus("active");
+    }).then((unlisten) => { if (disposed) unlisten(); else unlistenLevels = unlisten; });
+    void listen<string>("fyflate://party-audio-error", (event) => {
+      setCaptureStatus("error");
+      setCaptureError(event.payload || "Windows system audio stopped.");
+    }).then((unlisten) => { if (disposed) unlisten(); else unlistenError = unlisten; });
+    return () => {
+      disposed = true;
+      unlistenLevels?.();
+      unlistenError?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (settings.enabled && settings.reactToSystemAudio) {
+      void startAudioCapture();
+    } else if (!settings.enabled || !settings.reactToSystemAudio) {
+      stopAudioCapture();
+    }
+  }, [settings.enabled, settings.reactToSystemAudio, startAudioCapture, stopAudioCapture]);
 
   useEffect(() => {
     if (!settings.enabled || reducedMotion) {
@@ -130,7 +135,6 @@ export function usePartyMode(settings: PartyModeSettings, reducedMotion: boolean
     }
     let frame = 0;
     let lastFrame = 0;
-    const data = new Uint8Array(256);
     const tick = (now: number) => {
       const current = settingsRef.current;
       const interval = 1000 / current.fps;
@@ -138,16 +142,9 @@ export function usePartyMode(settings: PartyModeSettings, reducedMotion: boolean
         lastFrame = now;
         let energy = 0.2;
         let bass = 0.12;
-        const analyser = analyserRef.current;
-        if (current.reactToSystemAudio && analyser) {
-          analyser.getByteFrequencyData(data);
-          const average = data.reduce((sum, value) => sum + value, 0) / data.length / 255;
-          const peak = Math.max(...data) / 255;
-          const bassBins = data.slice(0, 32);
-          const bassAverage = bassBins.reduce((sum, value) => sum + value, 0) / bassBins.length / 255;
-          const bassPeak = Math.max(...bassBins) / 255;
-          energy = (average * 2.25 + peak * 0.65) * current.sensitivity;
-          bass = (bassAverage * 2.1 + bassPeak * 0.8) * current.bassSensitivity;
+        if (current.reactToSystemAudio) {
+          energy = nativeLevelsRef.current.energy * current.sensitivity;
+          bass = nativeLevelsRef.current.bass * current.bassSensitivity;
         }
         const nextEnergy = clamp(energy, 0, 1);
         const nextBass = clamp(bass, 0, 1);
