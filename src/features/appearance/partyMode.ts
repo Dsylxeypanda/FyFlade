@@ -170,9 +170,9 @@ export function usePartyMode(settings: PartyModeSettings) {
     "--party-spread": `${95 + settings.movement * 190}%`,
     "--party-speed": `${Math.max(0.55, 7 - settings.colorSpeed * 6.2)}s`,
     "--party-spin-speed": `${Math.max(0.8, 9 - settings.colorSpeed * 7.4)}s`,
-    "--party-overlay-opacity": settings.intensity * (0.55 + levels.energy * 0.42),
-    "--party-beat-scale": 1 + levels.bass * settings.movement * 0.2,
-    "--party-beat-rotate": `${(levels.energy - 0.5) * settings.movement * 7}deg`,
+    "--party-overlay-opacity": settings.intensity * (0.07 + levels.energy * 0.12),
+    "--party-beat-scale": 1 + levels.bass * settings.movement * 0.055,
+    "--party-beat-rotate": `${(levels.energy - 0.5) * settings.movement * 1.2}deg`,
     "--party-hue": `${(levels.phase * 92) % 360}deg`,
     "--party-phase-turn": `${levels.phase % 1}turn`,
     "--party-bass-radius": `${24 + levels.bass * 44}%`,
@@ -181,7 +181,7 @@ export function usePartyMode(settings: PartyModeSettings) {
     "--party-glow-px": `${5 + settings.glow * 25 + levels.energy * 32}px`,
     "--party-inner-glow-px": `${2 + settings.glow * 10 + levels.energy * 12}px`,
     "--party-control-scale": 1 + levels.bass * settings.movement * 0.035,
-    "--party-flash-opacity": settings.intensity * settings.glow * (0.22 + levels.bass * 0.76),
+    "--party-flash-opacity": settings.intensity * settings.glow * (0.025 + levels.bass * 0.1),
     "--party-random-x1": `${5 + Math.random() * 90}%`,
     "--party-random-y1": `${5 + Math.random() * 90}%`,
     "--party-random-x2": `${5 + Math.random() * 90}%`,
@@ -189,8 +189,8 @@ export function usePartyMode(settings: PartyModeSettings) {
     "--party-random-hue": `${Math.random() * 360}deg`,
     "--party-random-skew": `${-2 + Math.random() * 4}deg`,
     "--party-strobe-opacity": settings.style === "chaos"
-      ? Math.min(1, 0.38 + levels.energy * 0.42 + levels.bass * 0.45 + Math.random() * 0.22)
-      : settings.intensity * (0.08 + levels.bass * 0.28),
+      ? Math.min(0.18, 0.04 + levels.energy * 0.07 + levels.bass * 0.08)
+      : settings.intensity * (0.025 + levels.bass * 0.06),
   } as CSSProperties;
 
   return { captureStatus, captureError, levels, visualStyle, startAudioCapture, stopAudioCapture };

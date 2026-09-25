@@ -2,7 +2,7 @@
 .fyflate-party-root::before {
   content: ""; position: absolute; inset: 0; z-index: 99998; pointer-events: none;
   opacity: 0;
-  mix-blend-mode: hard-light; background-size: var(--party-spread, 250%) var(--party-spread, 250%);
+  mix-blend-mode: screen; background-size: var(--party-spread, 250%) var(--party-spread, 250%);
   filter: hue-rotate(var(--party-hue, 0deg)) saturate(var(--party-saturation, 2)) contrast(var(--party-contrast, 1.15));
   transform: scale(var(--party-beat-scale, 1)) rotate(var(--party-beat-rotate, 0deg));
   animation: fyflade-party-flow var(--party-speed, 3s) linear infinite;
@@ -20,38 +20,72 @@
   animation: fyflade-party-spin var(--party-spin-speed, 5s) linear infinite;
   transition: opacity 35ms linear, transform 35ms linear;
 }
-.fyflate-party-background::before { z-index: 2147483000; opacity: var(--party-overlay-opacity, .6); }
-.fyflate-party-background::after { z-index: 2147483001; opacity: var(--party-flash-opacity, .35); }
+.fyflate-party-background::before { z-index: 2147483000; opacity: var(--party-overlay-opacity, .1); }
+.fyflate-party-background::after { z-index: 2147483001; opacity: var(--party-flash-opacity, .05); }
 .fyflade-party-rainbow::before { background-image: linear-gradient(115deg,#ff2674,#8e45ff,#00d9ff,#36ff8b,#ffe14a,#ff2674); }
 .fyflade-party-bass::before { background-image: radial-gradient(circle at 50% 100%,rgba(255,30,110,.95),transparent var(--party-bass-radius, 32%)),linear-gradient(135deg,#120044,#0079ff); }
 .fyflade-party-neon::before { background-image: linear-gradient(125deg,#00fff0,#003cff,#fa00ff,#00fff0); }
 .fyflade-party-spectrum::before { background-image: repeating-linear-gradient(90deg,#00eaff 0 8%,#9847ff 8% 16%,#ff2b77 16% 24%,#ffe541 24% 32%); }
 .fyflade-party-disco::before { background-image: conic-gradient(from var(--party-phase-turn, 0turn),#ff247d,#ffd429,#30ffb1,#20bfff,#a64dff,#ff247d); }
 .fyflade-party-chill::before { background-image: radial-gradient(circle at 20% 20%,#55ddff,transparent 45%),radial-gradient(circle at 80% 80%,#9d63ff,transparent 48%); }
-.fyflade-party-chaos { animation: fyflade-party-ui-chaos 110ms steps(2, end) infinite; }
 .fyflade-party-chaos::before {
   background-image:
     radial-gradient(circle at var(--party-random-x1) var(--party-random-y1),#fff 0 1%,#ff00c8 8%,transparent 30%),
     conic-gradient(from var(--party-hue),#ff1744,#ffea00,#00e5ff,#00ff73,#651fff,#ff00bb,#ff1744);
-  opacity: var(--party-overlay-opacity, .88);
+  opacity: var(--party-overlay-opacity, .1);
 }
-.fyflade-party-chaos::after { opacity: var(--party-strobe-opacity, .72); }
+.fyflade-party-chaos::after { opacity: var(--party-strobe-opacity, .08); }
 .fyflade-party-chrome button,
 .fyflade-party-chrome input,
-.fyflade-party-chrome select {
+.fyflade-party-chrome select,
+.fyflade-party-chrome textarea {
   box-shadow:
     0 0 var(--party-glow-px, 12px) rgba(0,229,255,.82),
     inset 0 0 var(--party-inner-glow-px, 6px) rgba(255,0,187,.42);
-  border-color: rgba(130,90,255,.92) !important;
+  border-color: rgba(130,90,255,.92);
   transform: scale(var(--party-control-scale, 1));
-  transition: box-shadow 45ms linear, border-color 45ms linear, transform 45ms linear;
+  background-image: linear-gradient(115deg,rgba(0,229,255,.22),rgba(124,77,255,.3),rgba(255,0,187,.24),rgba(0,229,255,.22)) !important;
+  background-size: 320% 320% !important;
+  animation: fyflade-party-control-rave 1.15s ease-in-out infinite;
+  transition: transform 45ms linear;
+}
+.fyflade-party-chrome button:nth-child(3n+1),
+.fyflade-party-chrome input:nth-child(3n+1),
+.fyflade-party-chrome select:nth-child(3n+1) { animation-delay: -.38s; }
+.fyflade-party-chrome button:nth-child(3n+2),
+.fyflade-party-chrome input:nth-child(3n+2),
+.fyflade-party-chrome select:nth-child(3n+2) { animation-delay: -.76s; }
+
+.fyflade-party-chrome div[style*="border"],
+.fyflade-party-chrome section[style*="border"],
+.fyflade-party-chrome aside[style*="border"],
+.fyflade-party-chrome header[style*="border"] {
+  animation: fyflade-party-panel-rave 1.65s ease-in-out infinite;
+  transition: box-shadow 55ms linear, outline-color 55ms linear;
+}
+.fyflade-party-chrome div[style*="border"]:nth-child(3n+1),
+.fyflade-party-chrome section[style*="border"]:nth-child(3n+1) { animation-delay: -.55s; }
+.fyflade-party-chrome div[style*="border"]:nth-child(3n+2),
+.fyflade-party-chrome section[style*="border"]:nth-child(3n+2) { animation-delay: -1.1s; }
+
+.fyflade-party-chrome [role="tab"],
+.fyflade-party-chrome [role="menuitem"],
+.fyflade-party-chrome [aria-current="page"] {
+  animation: fyflade-party-tab-rave .95s ease-in-out infinite;
 }
 @keyframes fyflade-party-flow { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
 @keyframes fyflade-party-spin { to { transform: scale(var(--party-beat-scale, 1)) rotate(360deg); } }
-@keyframes fyflade-party-ui-chaos {
-  0% { filter: hue-rotate(0deg) saturate(1.45) contrast(1.05); }
-  25% { filter: hue-rotate(95deg) saturate(2.25) contrast(1.3); }
-  50% { filter: hue-rotate(205deg) saturate(1.8) contrast(1.18); }
-  75% { filter: hue-rotate(310deg) saturate(2.5) contrast(1.38); }
-  100% { filter: hue-rotate(360deg) saturate(1.6) contrast(1.12); }
+@keyframes fyflade-party-control-rave {
+  0%,100% { background-position: 0% 50%; border-color: #00e5ff; box-shadow: 0 0 var(--party-glow-px) rgba(0,229,255,.9), inset 0 0 var(--party-inner-glow-px) rgba(0,229,255,.28); }
+  33% { background-position: 50% 50%; border-color: #9b5cff; box-shadow: 0 0 var(--party-glow-px) rgba(155,92,255,.92), inset 0 0 var(--party-inner-glow-px) rgba(155,92,255,.35); }
+  66% { background-position: 100% 50%; border-color: #ff25c8; box-shadow: 0 0 var(--party-glow-px) rgba(255,37,200,.9), inset 0 0 var(--party-inner-glow-px) rgba(255,37,200,.32); }
+}
+@keyframes fyflade-party-panel-rave {
+  0%,100% { outline: 1px solid rgba(0,229,255,.72); box-shadow: 0 0 var(--party-inner-glow-px) rgba(0,229,255,.42); }
+  33% { outline: 1px solid rgba(147,75,255,.78); box-shadow: 0 0 var(--party-inner-glow-px) rgba(147,75,255,.5); }
+  66% { outline: 1px solid rgba(255,35,190,.72); box-shadow: 0 0 var(--party-inner-glow-px) rgba(255,35,190,.44); }
+}
+@keyframes fyflade-party-tab-rave {
+  0%,100% { filter: brightness(1) saturate(1.2); box-shadow: inset 3px 0 #00e5ff, 0 0 10px rgba(0,229,255,.35); }
+  50% { filter: brightness(1.35) saturate(1.8); box-shadow: inset 3px 0 #ff25c8, 0 0 18px rgba(255,37,200,.58); }
 }
