@@ -40890,10 +40890,10 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     <div
       className={[
         FYFLATE_WINDOW_MODE ? "fyflate-detached-root" : "",
-        !FYFLATE_WINDOW_MODE && partyModeSettings.enabled ? "fyflate-party-root" : "",
-        !FYFLATE_WINDOW_MODE && partyModeSettings.enabled && partyModeSettings.affectBackground ? "fyflade-party-background" : "",
-        !FYFLATE_WINDOW_MODE && partyModeSettings.enabled && partyModeSettings.affectChrome ? "fyflade-party-chrome" : "",
-        !FYFLATE_WINDOW_MODE && partyModeSettings.enabled ? `fyflade-party-${partyModeSettings.style}` : "",
+        partyModeSettings.enabled ? "fyflate-party-root" : "",
+        partyModeSettings.enabled && partyModeSettings.affectBackground ? "fyflade-party-background" : "",
+        partyModeSettings.enabled && partyModeSettings.affectChrome ? "fyflade-party-chrome" : "",
+        partyModeSettings.enabled ? `fyflade-party-${partyModeSettings.style}` : "",
       ].filter(Boolean).join(" ") || undefined}
       style={{
         ...partyMode.visualStyle,

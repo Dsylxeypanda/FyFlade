@@ -73,6 +73,9 @@ export function PartyModePanel({ language, settings, reducedMotion, captureStatu
           >
             🔥 {ui("FULL RAVE – MAKS ALT", "FULL RAVE – MAX EVERYTHING")}
           </button>
+          <div style={{ color: "#ffb6f5", fontSize: 9, lineHeight: "14px", textAlign: "center" }}>
+            {ui("Advarsel: FULL RAVE bruker svært intense og raske blink over hele appen.", "Warning: FULL RAVE uses extremely intense, rapid flashing across the entire app.")}
+          </div>
           {reducedMotion && <div style={{ padding: 8, border: `1px solid ${colors.border}`, borderRadius: 5, color: colors.muted, fontSize: 9.5 }}>{ui("Satt på pause fordi redusert bevegelse er aktivert.", "Paused because reduced motion is enabled.")}</div>}
           <label style={{ display: "grid", gridTemplateColumns: "minmax(115px, 1fr) minmax(150px, 1.5fr)", alignItems: "center", gap: 9, color: colors.muted, fontSize: 10 }}>
             {ui("Stil", "Style")}
