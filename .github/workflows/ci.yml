@@ -1,0 +1,36 @@
+name: FyFlade CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-release-gate:
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out reviewed source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run complete FyFlade release gate
+        shell: pwsh
+        run: .\scripts\test-fyflade-release.ps1 -IncludeDesktopBuild -AllowNetworkDependencyFetch

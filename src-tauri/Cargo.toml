@@ -3,6 +3,7 @@ name = "fyflade"
 version = "1.0.0"
 description = "FyFlade multistream chat"
 authors = ["Dsylxeypanda"]
+license = "GPL-3.0-or-later"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

@@ -1,5 +1,6 @@
 param(
-  [switch]$IncludeDesktopBuild
+  [switch]$IncludeDesktopBuild,
+  [switch]$AllowNetworkDependencyFetch
 )
 
 $ErrorActionPreference = "Stop"
@@ -16,8 +17,12 @@ function Invoke-Checked([scriptblock]$Command, [string]$FailureMessage) {
 
 try {
   Push-Location $projectRoot
-  $env:CARGO_HOME = Join-Path $projectRoot ".cargo-home"
-  $env:CARGO_NET_OFFLINE = "true"
+  if ($AllowNetworkDependencyFetch) {
+    Remove-Item Env:CARGO_NET_OFFLINE -ErrorAction SilentlyContinue
+  } else {
+    $env:CARGO_HOME = Join-Path $projectRoot ".cargo-home"
+    $env:CARGO_NET_OFFLINE = "true"
+  }
 
   $config = Get-Content -LiteralPath "src-tauri\tauri.conf.json" -Raw | ConvertFrom-Json
   $package = Get-Content -LiteralPath "package.json" -Raw | ConvertFrom-Json
@@ -73,6 +78,7 @@ try {
     RelayTypeCheck = "Passed"
     EmbeddedYouTubeOAuth = "Passed"
     DesktopBuild = if ($IncludeDesktopBuild) { "Passed" } else { "Not requested" }
+    DependencyMode = if ($AllowNetworkDependencyFetch) { "Online CI" } else { "Offline release" }
     ManualReleaseChecklist = "Required"
   }
 }

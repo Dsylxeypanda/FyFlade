@@ -1,5 +1,11 @@
 # FyFlade security and privacy
 
+## Reporting a vulnerability
+
+Do not open a public issue for a suspected vulnerability. Send a concise report to [sabryna91@live.no](mailto:sabryna91@live.no) with affected versions, reproduction steps, impact, and any suggested mitigation. Do not include real user credentials or private chat data.
+
+The project will acknowledge a usable report as soon as practical, investigate it privately, and coordinate a fix before public disclosure when the report is valid.
+
 ## Trust model
 
 FyFlade uses the official OAuth pages for Twitch, Kick, and Google. FyFlade must
@@ -44,9 +50,9 @@ secrets.
    signing.
 4. Verify the generated updater signature before publishing the release URL.
 5. Store Cloudflare values with `npx wrangler secret put`.
-6. Add Authenticode signing before public distribution so Windows can identify
-   the publisher. Tauri updater signing protects updates but does not replace a
-   Windows code-signing certificate or SmartScreen reputation.
+6. Use the approved SignPath Foundation workflow for Authenticode signing before
+   public distribution. Tauri updater signing protects updates but does not
+   replace Windows code signing or SmartScreen reputation.
 7. Publish a user-facing privacy notice matching the behavior above before a
    public release.
 8. Run `scripts/verify-fyflade-release.ps1` against the final installer. It

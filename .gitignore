@@ -21,6 +21,18 @@ dist
 dist-ssr
 *.local
 
+# Historical local work products and source snapshots are not part of the
+# maintained public source tree. They remain available in the developer's
+# existing local checkout.
+work/
+src/*.backup-*.tsx
+src/*.before-*.tsx
+src/*.BROKEN-*.txt
+src/app.WORKING-BACKUP.tsx
+src-tauri/*.backup-*
+PATCH_CARGO_YOUTUBE_STREAM.ps1
+README_YOUTUBE_STREAM.txt
+
 # Local updater signing keys must never be committed or shared.
 src-tauri/.signing/
 *.pem

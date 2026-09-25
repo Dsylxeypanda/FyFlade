@@ -1,6 +1,6 @@
 # FyFlade 1.0 – personvern / privacy
 
-Sist oppdatert / Last updated: 13 September 2026
+Sist oppdatert / Last updated: 25 September 2026
 
 ## Norsk
 
@@ -10,7 +10,7 @@ FyFlade er en skrivebordsapp som samler chat fra Twitch, Kick og YouTube.
 
 - valgte kanaler, innstillinger, utseende og oppsett
 - lokale kallenavn, ignoreringer og notater
-- chatlogg i opptil 24 timer dersom brukeren selv slår på lagring
+- valgfri lokal chatlogg med lagringstiden brukeren selv velger
 - innloggingstoken og Client Secrets i Windows Credential Manager
 
 FyFlade mottar eller lagrer aldri kontopassord. Innlogging skjer på den offisielle
@@ -28,6 +28,12 @@ Cloudflare leverer nettverkstrafikken og behandler derfor nødvendige tekniske
 nettverksdata under transport etter sine egne vilkår. FyFlade bruker ikke disse
 dataene til profilering, reklame eller salg.
 
+Når brukeren legger til eller logger inn på en tjeneste, kommuniserer FyFlade med
+Twitch, Kick eller YouTube/Google for å hente og sende chatdata som brukeren har
+bedt om. Emoter og kosmetikk kan hentes fra 7TV og BetterTTV. Oversettelse åpnes
+først etter en personvernforklaring og sender bare den valgte meldingsteksten til
+oversettelsestjenesten brukeren velger.
+
 ### Deling
 
 FyFlade-utvikleren får ikke tilgang til brukerens passord, innloggingstoken,
@@ -43,7 +49,7 @@ FyFlade is a desktop app that combines chat from Twitch, Kick, and YouTube.
 
 - selected channels, preferences, appearance, and layouts
 - local nicknames, ignores, and notes
-- up to 24 hours of chat history when the user enables history saving
+- optional local chat history using the retention period selected by the user
 - sign-in tokens and Client Secrets in Windows Credential Manager
 
 FyFlade never receives or stores account passwords. Sign-in happens on the
@@ -60,6 +66,12 @@ channel, chat message, IP address, or persistent installation identifier.
 Cloudflare delivers the network request and therefore processes necessary
 technical network data in transit under its own terms. FyFlade does not use this
 data for profiling, advertising, or sale.
+
+When a user adds or signs in to a service, FyFlade communicates with Twitch,
+Kick, or YouTube/Google to retrieve and send chat data requested by the user.
+Emotes and cosmetics may be retrieved from 7TV and BetterTTV. Translation opens
+only after a privacy disclosure and sends only the selected message text to the
+translation provider chosen by the user.
 
 ### Sharing
 
