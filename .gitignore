@@ -32,6 +32,11 @@ src/app.WORKING-BACKUP.tsx
 src-tauri/*.backup-*
 PATCH_CARGO_YOUTUBE_STREAM.ps1
 README_YOUTUBE_STREAM.txt
+src-tauri/2
+public/chatnest-logo.png
+public/tauri.svg
+public/vite.svg
+src/assets/react.svg
 
 # Local updater signing keys must never be committed or shared.
 src-tauri/.signing/
