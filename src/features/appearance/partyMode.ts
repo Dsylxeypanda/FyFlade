@@ -75,7 +75,7 @@ export function writePartyModeSettings(settings: PartyModeSettings) {
 
 type PartyLevels = { energy: number; bass: number; phase: number };
 
-export function usePartyMode(settings: PartyModeSettings, reducedMotion: boolean) {
+export function usePartyMode(settings: PartyModeSettings) {
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
   const nativeLevelsRef = useRef({ energy: 0, bass: 0 });
@@ -97,7 +97,7 @@ export function usePartyMode(settings: PartyModeSettings, reducedMotion: boolean
       setCaptureStatus("active");
     } catch (error) {
       setCaptureStatus("error");
-      setCaptureError(error instanceof Error ? error.message : "System audio could not be started.");
+      setCaptureError(error instanceof Error ? error.message : String(error || "System audio could not be started."));
     }
   }, []);
 
@@ -129,7 +129,7 @@ export function usePartyMode(settings: PartyModeSettings, reducedMotion: boolean
   }, [settings.enabled, settings.reactToSystemAudio, startAudioCapture, stopAudioCapture]);
 
   useEffect(() => {
-    if (!settings.enabled || reducedMotion) {
+    if (!settings.enabled) {
       setLevels((current) => ({ ...current, energy: 0, bass: 0 }));
       return;
     }
@@ -158,7 +158,7 @@ export function usePartyMode(settings: PartyModeSettings, reducedMotion: boolean
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [settings.enabled, settings.fps, settings.reactToSystemAudio, reducedMotion]);
+  }, [settings.enabled, settings.fps, settings.reactToSystemAudio]);
 
   const visualStyle = {
     "--party-energy": levels.energy,

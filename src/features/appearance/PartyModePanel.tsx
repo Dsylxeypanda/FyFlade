@@ -11,13 +11,14 @@ type Props = {
   reducedMotion: boolean;
   captureStatus: "off" | "starting" | "active" | "error";
   captureError: string;
+  levels: { energy: number; bass: number };
   colors: Colors;
   onUpdate: (patch: Partial<PartyModeSettings>) => void;
   onStartAudio: () => void;
   onStopAudio: () => void;
 };
 
-export function PartyModePanel({ language, settings, reducedMotion, captureStatus, captureError, colors, onUpdate, onStartAudio, onStopAudio }: Props) {
+export function PartyModePanel({ language, settings, reducedMotion, captureStatus, captureError, levels, colors, onUpdate, onStartAudio, onStopAudio }: Props) {
   const no = language === "no";
   const ui = (norwegian: string, english: string) => no ? norwegian : english;
   const effectArea = settings.affectBackground && settings.affectChrome
@@ -115,6 +116,17 @@ export function PartyModePanel({ language, settings, reducedMotion, captureStatu
                 <span style={{ color: captureStatus === "active" ? "#57c76f" : colors.muted, fontSize: 9.5 }}>
                   {captureStatus === "active" ? ui("Aktiv – Spotify og annen PC-lyd analyseres lokalt", "Active – Spotify and other PC audio is analysed locally") : ui("Bruker Windows-lyden direkte – ingen skjermdeling.", "Uses Windows audio directly – no screen sharing.")}
                 </span>
+              </div>
+              <div style={{ display: "grid", gap: 6, padding: 9, border: `1px solid ${colors.border}`, borderRadius: 5, background: colors.input }}>
+                {([ [ui("PC-lyd", "PC audio"), levels.energy, "linear-gradient(90deg,#00d9ff,#7c4dff,#ff2acb)"], [ui("Bass", "Bass"), levels.bass, "linear-gradient(90deg,#00ff85,#ffe600,#ff1744)"], ] as const).map(([label, value, background]) => (
+                  <div key={label} style={{ display: "grid", gridTemplateColumns: "52px 1fr 34px", alignItems: "center", gap: 7, color: colors.muted, fontSize: 9.5 }}>
+                    <span>{label}</span>
+                    <span style={{ height: 7, overflow: "hidden", borderRadius: 999, background: colors.panelRaised }}>
+                      <span style={{ display: "block", width: `${Math.round(value * 100)}%`, height: "100%", borderRadius: 999, background, transition: "width 45ms linear" }} />
+                    </span>
+                    <span style={{ textAlign: "right" }}>{Math.round(value * 100)}%</span>
+                  </div>
+                ))}
               </div>
             </>
           )}

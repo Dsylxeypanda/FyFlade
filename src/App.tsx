@@ -129,6 +129,7 @@ import {
 import { ObsOverlaySettingsPanel } from "./features/obs/ObsOverlaySettingsPanel";
 import { GlobalSearchDialog } from "./features/search/GlobalSearchDialog";
 import {
+  PARTY_MODE_SETTINGS_KEY,
   readPartyModeSettings,
   usePartyMode,
   writePartyModeSettings,
@@ -5631,7 +5632,7 @@ function App() {
      );
 
   const [partyModeSettings, setPartyModeSettings] = useState<PartyModeSettings>(readPartyModeSettings);
-  const partyMode = usePartyMode(partyModeSettings, reducedMotionEnabled || Boolean(FYFLATE_WINDOW_MODE));
+  const partyMode = usePartyMode(partyModeSettings);
   const [translationSettings, setTranslationSettings] = useState<TranslationSettings>(readTranslationSettings);
 
   const [
@@ -9493,6 +9494,8 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
             ttsSettingsRef.current = next;
             setTtsSettings(next);
             if (!next.enabled && !next.hoverEnabled) stopTts();
+          } else if (event.key === PARTY_MODE_SETTINGS_KEY) {
+            setPartyModeSettings(readPartyModeSettings());
           }
         };
 
@@ -40887,7 +40890,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
     <div
       className={[
         FYFLATE_WINDOW_MODE ? "fyflate-detached-root" : "",
-        !FYFLATE_WINDOW_MODE && partyModeSettings.enabled && !reducedMotionEnabled ? "fyflate-party-root" : "",
+        !FYFLATE_WINDOW_MODE && partyModeSettings.enabled ? "fyflate-party-root" : "",
         !FYFLATE_WINDOW_MODE && partyModeSettings.enabled && partyModeSettings.affectBackground ? "fyflade-party-background" : "",
         !FYFLATE_WINDOW_MODE && partyModeSettings.enabled && partyModeSettings.affectChrome ? "fyflade-party-chrome" : "",
         !FYFLATE_WINDOW_MODE && partyModeSettings.enabled ? `fyflade-party-${partyModeSettings.style}` : "",
@@ -48442,6 +48445,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                   reducedMotion={reducedMotionEnabled}
                   captureStatus={partyMode.captureStatus}
                   captureError={partyMode.captureError}
+                  levels={partyMode.levels}
                   colors={{
                     panelRaised: theme.panelRaised,
                     input: theme.input,
