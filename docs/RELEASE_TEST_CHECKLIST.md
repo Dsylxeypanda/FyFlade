@@ -21,22 +21,22 @@ This is the final release gate for the Windows installer and portable ZIP. A pub
 
 ## Accounts and privacy
 
-- [ ] Sign in to Twitch, Kick, and YouTube separately and restart FyFlade after each sign-in.
+- [ ] Sign in to Twitch and Kick separately and restart FyFlade after each sign-in.
 - [ ] Confirm the user remains signed in and tokens/secrets are absent from localStorage, exported backups, logs, screenshots, crash messages, and the portable folder.
 - [ ] Confirm credentials appear only as protected generic entries in Windows Credential Manager.
 - [ ] Confirm signing out removes the corresponding credential and does not disconnect other platforms.
 - [ ] Confirm anonymous usage reporting is off by default and contains no account, channel, message, IP, token, or device identity.
 - [ ] Confirm clearing temporary caches does not remove accounts, profiles, layouts, or intentional chat history.
 
-## Twitch, Kick, and YouTube chat
+## Twitch and Kick chat (FyFlade 1.0)
 
-- [ ] Receive and send messages in live Twitch, Kick, and YouTube channels.
+- [ ] Receive and send messages in live Twitch and Kick channels.
 - [ ] Send a message to an offline Twitch channel and an offline Kick channel; confirm the sent message appears locally without duplication.
 - [ ] Confirm reconnecting does not duplicate recent messages.
 - [ ] Confirm native badges, moderator/VIP/subscriber badges, and 7TV cosmetics render on the correct platform.
-- [ ] Confirm Twitch, Kick, YouTube, 7TV, and BTTV emotes render without changing typed text such as `:D` into another token.
-- [ ] Confirm `/t `, `/k `, and `/y ` route a combined-tab message to the selected platform.
-- [ ] Confirm quota/status views explain YouTube and Kick behavior without exposing secrets.
+- [ ] Confirm Twitch, Kick, 7TV, and BTTV emotes render without changing typed text such as `:D` into another token.
+- [ ] Confirm `/t ` and `/k ` route a combined-tab message to the selected platform.
+- [ ] Confirm quota/status views explain Kick behavior without exposing secrets.
 
 ## Channels, windows, and profiles
 
@@ -49,7 +49,13 @@ This is the final release gate for the Windows installer and portable ZIP. A pub
 ## Highlights, inbox, sounds, and history
 
 - [ ] Confirm direct mentions, replies, and configured highlight words enter Smart inbox once; ordinary messages do not.
-- [ ] Confirm YouTube paid events are labelled as events and not falsely labelled as direct mentions.
+- [ ] Confirm ordinary Twitch/Kick events are not falsely labelled as direct mentions.
+
+## YouTube (planned for FyFlade 1.1)
+
+- [ ] Keep YouTube sign-in and sending disabled in the public 1.0 build.
+- [ ] Before 1.1, complete Google verification and repeat the account, chat,
+  emote, event, quota, moderation, privacy, and `/y ` routing tests for YouTube.
 - [ ] Confirm muted channels/users, notification settings, sound settings, cooldown, volume, and test sound behave correctly.
 - [ ] Confirm optional text-to-speech respects enablement, cooldown, platform/channel rules, and Windows voice availability.
 - [ ] Confirm disabled history saves nothing new; enabled live history follows retention and appears in user cards.

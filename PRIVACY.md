@@ -1,10 +1,11 @@
 # FyFlade 1.0 – personvern / privacy
 
-Sist oppdatert / Last updated: 25 September 2026
+Sist oppdatert / Last updated: 6 October 2026
 
 ## Norsk
 
-FyFlade er en skrivebordsapp som samler chat fra Twitch, Kick og YouTube.
+FyFlade 1.0 er en skrivebordsapp som samler chat fra Twitch og Kick. YouTube er
+planlagt for versjon 1.1 og er ikke aktivert i 1.0.
 
 ### Dette lagres på brukerens PC
 
@@ -29,21 +30,32 @@ nettverksdata under transport etter sine egne vilkår. FyFlade bruker ikke disse
 dataene til profilering, reklame eller salg.
 
 Når brukeren legger til eller logger inn på en tjeneste, kommuniserer FyFlade med
-Twitch, Kick eller YouTube/Google for å hente og sende chatdata som brukeren har
-bedt om. Emoter og kosmetikk kan hentes fra 7TV og BetterTTV. Oversettelse åpnes
-først etter en personvernforklaring og sender bare den valgte meldingsteksten til
+Twitch eller Kick for å hente og sende chatdata som brukeren har bedt om. Emoter
+og kosmetikk kan hentes fra 7TV og BetterTTV. Oversettelse åpnes først etter en
+personvernforklaring og sender bare den valgte meldingsteksten til
 oversettelsestjenesten brukeren velger.
+
+Kick krever at FyFlades private appnøkkel oppbevares på serveren. Kick-koden og
+oppdateringstokenet sendes derfor kryptert med HTTPS gjennom FyFlades
+Cloudflare-tjeneste når appen bytter eller fornyer et token. Den nåværende
+serverkoden lagrer ikke tokenet og logger ikke innholdet i forespørselen. Live
+Kick-meldinger passerer også tjenesten mens de leveres til tilkoblede klienter,
+men lagres ikke som chatlogg på serveren. Cloudflare behandler nødvendige
+tekniske nettverksdata under transport etter sine egne vilkår.
 
 ### Deling
 
-FyFlade-utvikleren får ikke tilgang til brukerens passord, innloggingstoken,
-Client Secrets, lokale chatlogg eller innstillinger. Data selges ikke.
+FyFlade mottar aldri brukerens kontopassord. Den nåværende appen og
+serverkoden er ikke laget for å lagre eller vise brukerens innloggingstoken,
+live chat, lokale chatlogg eller innstillinger til utvikleren. Lokale data
+sendes ikke automatisk til utvikleren, og data selges ikke.
 
 Spørsmål om personvern kan sendes til [sabryna91@live.no](mailto:sabryna91@live.no).
 
 ## English
 
-FyFlade is a desktop app that combines chat from Twitch, Kick, and YouTube.
+FyFlade 1.0 is a desktop app that combines chat from Twitch and Kick. YouTube
+is planned for version 1.1 and is not enabled in 1.0.
 
 ### Data stored on the user's PC
 
@@ -67,15 +79,25 @@ Cloudflare delivers the network request and therefore processes necessary
 technical network data in transit under its own terms. FyFlade does not use this
 data for profiling, advertising, or sale.
 
-When a user adds or signs in to a service, FyFlade communicates with Twitch,
-Kick, or YouTube/Google to retrieve and send chat data requested by the user.
-Emotes and cosmetics may be retrieved from 7TV and BetterTTV. Translation opens
-only after a privacy disclosure and sends only the selected message text to the
-translation provider chosen by the user.
+When a user adds or signs in to a service, FyFlade communicates with Twitch or
+Kick to retrieve and send chat data requested by the user. Emotes and cosmetics
+may be retrieved from 7TV and BetterTTV. Translation opens only after a privacy
+disclosure and sends only the selected message text to the translation provider
+chosen by the user.
+
+Kick requires FyFlade's private application key to remain on the server. The
+Kick authorization code and refresh token therefore travel over encrypted HTTPS
+through FyFlade's Cloudflare service when the app exchanges or refreshes a
+token. The current server code does not persist the token or log the request
+body. Live Kick messages also pass through the service while they are delivered
+to connected clients, but are not stored as server-side chat history. Cloudflare
+processes necessary technical network data in transit under its own terms.
 
 ### Sharing
 
-The FyFlade developer cannot access users' passwords, sign-in tokens, Client
-Secrets, local chat history, or settings. Data is not sold.
+FyFlade never receives a user's account password. The current application and
+server code are not designed to store or expose users' sign-in tokens, live
+chat, local chat history, or settings to the developer. Local data is not sent
+automatically to the developer, and data is not sold.
 
 Privacy questions can be sent to [sabryna91@live.no](mailto:sabryna91@live.no).

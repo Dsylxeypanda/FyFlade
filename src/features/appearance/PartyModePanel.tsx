@@ -41,6 +41,9 @@ export function PartyModePanel({ language, settings, reducedMotion, captureStatu
           <div style={{ color: colors.muted, fontSize: 9.5, lineHeight: "15px", marginTop: 3 }}>
             {ui("Visuelle effekter med valgfri, lokal analyse av systemlyd. Ingen lyd tas opp, lagres eller lastes opp.", "Visual effects with optional local system-audio analysis. Audio is never recorded, stored, or uploaded.")}
           </div>
+          <div style={{ color: "#ffb6f5", fontSize: 9.5, lineHeight: "15px", marginTop: 3, fontWeight: 750 }}>
+            ⚠ {ui("Du er herved advart. Fest med måte 😄", "You've been warned. Party responsibly 😄")}
+          </div>
         </div>
         <label style={{ display: "flex", alignItems: "center", gap: 6, color: settings.enabled ? colors.accent : colors.muted, fontSize: 10, fontWeight: 750, cursor: "pointer" }}>
           <input type="checkbox" checked={settings.enabled} onChange={(event) => onUpdate({ enabled: event.target.checked })} />

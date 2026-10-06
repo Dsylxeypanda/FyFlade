@@ -1,6 +1,6 @@
 # FyFlade 1.0 release readiness report
 
-Date: 2026-09-25
+Date: 2026-10-06
 
 ## Decision
 
@@ -13,7 +13,8 @@ No unsigned artifact should be uploaded to the FyFlade website or update endpoin
 - Product name: FyFlade
 - Display version: 1.0
 - Technical version: 1.0.0
-- Twitch, Kick, and YouTube chat are integrated, including combined chat and `/t`, `/k`, and `/y` routing.
+- Twitch and Kick chat are active, including combined chat and `/t` and `/k`
+  routing. YouTube is intentionally disabled in 1.0 and planned for 1.1.
 - Settings opens as its own movable window.
 - User-card popouts, profiles, per-channel settings, Smart inbox, moderation, OBS dock/browser view, portable mode, automatic updater support, chat history, highlights, TTS, and Party / Rave Mode are present.
 - The removed Move/Edit Layout feature and Settings-section reordering are intentionally not release requirements.
@@ -42,11 +43,13 @@ This means an offline channel is not repeatedly queried like a live channel, and
 
 This is defense in depth, not protection against malware already running as the same Windows user. A malicious same-user process may be able to ask Windows for credentials belonging to that user.
 
-## YouTube configuration
+## YouTube configuration (planned for 1.1)
 
 The official public OAuth client identifier is embedded in the current application build. It is a public identifier, not a secret. Users click **Log in** and do not create their own Google Cloud project or paste credentials.
 
-Before public release, the Google OAuth consent configuration must still be confirmed as production-ready and tested from a clean Google account that has never used FyFlade.
+Before version 1.1, the Google OAuth consent configuration must be confirmed as
+production-ready and tested from a clean Google account that has never used
+FyFlade. This does not block the Twitch/Kick-only 1.0 release.
 
 ## Compatibility kept intentionally
 
@@ -56,13 +59,20 @@ Before public release, the Google OAuth consent configuration must still be conf
 - The existing relay/updater hostname contains `chatnest-kick-relay`; it is infrastructure, not visible product branding.
 - Older backup files with `app: "ChatNest"` remain importable.
 
-## Automated verification on 2026-09-25
+## Automated verification on 2026-10-06
 
 - `npm run build`: passed.
 - Rust tests: passed, 3 of 3.
 - Cloudflare Kick relay TypeScript check: passed.
 - Full optimized Windows desktop build: passed.
 - Combined release gate with desktop build: passed.
+- Offline release gate after refreshing the project-local dependency cache:
+  passed.
+- JavaScript production dependency audits for the desktop app and Cloudflare
+  Worker: zero known vulnerabilities.
+- RustSec audit after upgrading `h2` to 0.4.16 and `rustls` to 0.23.45: zero
+  known vulnerabilities. Remaining notices are maintenance/yanked warnings in
+  transitive lockfile entries, not active vulnerability findings.
 - Fresh portable ZIP: structure, portable marker, product metadata, and SHA-256 verification passed in explicit unsigned-development mode.
 - Fresh NSIS installer and Tauri updater signature: built successfully with the existing protected release key.
 
@@ -73,7 +83,7 @@ The frontend build has one non-blocking large-bundle warning (about 771 kB befor
 These files are for local testing only and must not be published:
 
 - Portable ZIP: `release/portable/FyFlade-1.0.0-windows-x64-portable.zip`
-  - SHA-256: `E9D4ABA48D3D704831AFE43CEC741F0BB91D8ECC0B8520C3E2E5D3F8A202ECC5`
+  - SHA-256: `227AD3E92AEFFBA9EEF47EF869CB98F97BE3D87A136E00A489EDC4472FD60736`
 - NSIS installer: `src-tauri/target/release/bundle/nsis/FyFlade_1.0.0_x64-setup.exe`
   - SHA-256: `CDE5870372BF8E668A2E57F58C1B386BC163DFA6C1ABE150CAFFFAE42D459252`
   - Tauri updater signature: present (`416` bytes)
@@ -85,8 +95,9 @@ Both executable builds are currently `NotSigned`. Old artifacts were moved into 
 
 1. Obtain/configure a trusted Windows Authenticode code-signing identity or choose a Store/open-source signing distribution path.
 2. Rebuild both public artifacts, verify Authenticode, and publish their final hashes.
-3. Complete every relevant manual checkbox on a clean Windows user/PC with real Twitch, Kick, YouTube, OBS, multi-monitor, portable, install/uninstall, and update testing.
-4. Confirm the Google OAuth consent screen and official client work for an unrelated clean account.
-5. Test one genuine signed update from an older signed build without losing data.
+3. Complete every relevant 1.0 manual checkbox on a clean Windows user/PC with
+   real Twitch, Kick, OBS, multi-monitor, portable, install/uninstall, and update
+   testing.
+4. Test one genuine signed update from an older signed build without losing data.
 
 Until these pass, FyFlade should be described as a test candidate rather than a finished public release.

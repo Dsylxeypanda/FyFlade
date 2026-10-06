@@ -96,11 +96,6 @@ import { useProfiles } from "./features/profiles/useProfiles";
 import { ProfilesPanel } from "./features/profiles/ProfilesPanel";
 import { DockWorkspace } from "./features/layout/DockWorkspace";
 import { defaultLayout, showInbox, type WorkspaceLayout, type Pane as LayoutPane } from "./features/layout/layout";
-import {
-  fitGeometryToMonitors,
-  readSettingsWindowGeometry,
-  writeSettingsWindowGeometry,
-} from "./features/layout/detachedWindowGeometry";
 import { profileName, PROFILES_KEY } from "./features/profiles/profiles";
 import {
   FirstRunSetup,
@@ -205,8 +200,31 @@ const FLOATING_USER_CARD_KEY =
 const FLOATING_SETTINGS_SYNC_KEY =
   "chatnest.windows.settingsSync.v1";
 
+const FLOATING_SETTINGS_SYNC_ACK_KEY =
+  "chatnest.windows.settingsSyncAck.v1";
+
 const SUPPRESS_STARTUP_INTRO_ONCE_KEY =
   "fyflate.startupIntro.suppressOnce.v1";
+
+const SUPPRESS_PARTY_RESET_ONCE_KEY =
+  "fyflate.partyMode.suppressResetOnce.v1";
+
+function captureLocalStorageSnapshot() {
+  const entries: Array<[string, string | null]> = [];
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (
+      !key ||
+      key === FLOATING_SETTINGS_SYNC_KEY ||
+      key === FLOATING_SETTINGS_SYNC_ACK_KEY
+    ) {
+      continue;
+    }
+    entries.push([key, localStorage.getItem(key)]);
+  }
+  entries.sort(([left], [right]) => left.localeCompare(right));
+  return JSON.stringify(entries);
+}
 
 const FYFLATE_CURRENT_WINDOW_LABEL =
   (() => {
@@ -431,6 +449,12 @@ const FYFLADE_YOUTUBE_OAUTH_CLIENT_ID =
 
 const FYFLADE_YOUTUBE_OAUTH_CLIENT_SECRET =
   String(import.meta.env.VITE_YOUTUBE_OAUTH_CLIENT_SECRET || "").trim();
+
+// YouTube is intentionally held for the 1.1 release. Keep the completed
+// integration and saved local data intact, but do not start OAuth, restore
+// sessions, poll chats, or expose active connection controls in FyFlade 1.0.
+const YOUTUBE_RELEASE_ENABLED = false;
+const YOUTUBE_PLANNED_VERSION = "1.1";
 
 const YOUTUBE_PROFILE_CACHE_KEY =
   "chatnest.youtube.profileCache.v1";
@@ -5631,7 +5655,25 @@ function App() {
         ) === "true"
      );
 
-  const [partyModeSettings, setPartyModeSettings] = useState<PartyModeSettings>(readPartyModeSettings);
+  const [partyModeSettings, setPartyModeSettings] = useState<PartyModeSettings>(() => {
+    const saved = readPartyModeSettings();
+    const preserveForInternalRefresh =
+      !FYFLATE_WINDOW_MODE &&
+      sessionStorage.getItem(SUPPRESS_PARTY_RESET_ONCE_KEY) === "true";
+
+    if (preserveForInternalRefresh) {
+      sessionStorage.removeItem(SUPPRESS_PARTY_RESET_ONCE_KEY);
+      return saved;
+    }
+
+    if (!FYFLATE_WINDOW_MODE && saved.enabled) {
+      const disabled = { ...saved, enabled: false };
+      writePartyModeSettings(disabled);
+      return disabled;
+    }
+
+    return saved;
+  });
   const partyMode = usePartyMode(partyModeSettings);
   const [translationSettings, setTranslationSettings] = useState<TranslationSettings>(readTranslationSettings);
 
@@ -6203,6 +6245,13 @@ function App() {
         "settings"
     );
 
+  const settingsClosePendingRef = useRef(false);
+  const settingsInitialStorageSnapshotRef = useRef(
+    FYFLATE_WINDOW_MODE === "settings"
+      ? captureLocalStorageSnapshot()
+      : ""
+  );
+
   const [
     settingsWindowPosition,
     setSettingsWindowPosition,
@@ -6350,6 +6399,7 @@ function App() {
     useState("");
 
   const youtubeOAuthConfigured =
+    YOUTUBE_RELEASE_ENABLED &&
     isValidYouTubeOAuthClientId(
       youtubeOAuthClientId
     );
@@ -7475,46 +7525,6 @@ function App() {
         hoverTtsTimerRef.current = null;
       }
       stopTts();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (FYFLATE_WINDOW_MODE !== "settings") return;
-    const currentWindow = WebviewWindow.getCurrent();
-    let saveTimer: number | null = null;
-    let stopped = false;
-    const saveGeometry = () => {
-      if (saveTimer !== null) window.clearTimeout(saveTimer);
-      saveTimer = window.setTimeout(() => {
-        saveTimer = null;
-        void Promise.all([
-          currentWindow.outerPosition(),
-          currentWindow.outerSize(),
-        ]).then(([position, size]) => {
-          if (stopped) return;
-          writeSettingsWindowGeometry({
-            version: 2,
-            x: position.x,
-            y: position.y,
-            width: size.width,
-            height: size.height,
-          });
-        }).catch(() => undefined);
-      }, 180);
-    };
-    let unlistenMoved: (() => void) | undefined;
-    let unlistenResized: (() => void) | undefined;
-    void currentWindow.onMoved(saveGeometry).then((unlisten) => {
-      if (stopped) unlisten(); else unlistenMoved = unlisten;
-    });
-    void currentWindow.onResized(saveGeometry).then((unlisten) => {
-      if (stopped) unlisten(); else unlistenResized = unlisten;
-    });
-    return () => {
-      stopped = true;
-      if (saveTimer !== null) window.clearTimeout(saveTimer);
-      unlistenMoved?.();
-      unlistenResized?.();
     };
   }, []);
 
@@ -9418,6 +9428,18 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
   useEffect(
     () => {
+      if (!FYFLATE_WINDOW_MODE) {
+        const pendingSync = localStorage.getItem(FLOATING_SETTINGS_SYNC_KEY);
+        if (pendingSync) {
+          localStorage.setItem(FLOATING_SETTINGS_SYNC_ACK_KEY, pendingSync);
+        }
+      }
+    },
+    []
+  );
+
+  useEffect(
+    () => {
       const syncDetachedSettings =
         (event: StorageEvent) => {
           if (
@@ -9426,6 +9448,10 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
           ) {
             sessionStorage.setItem(
               SUPPRESS_STARTUP_INTRO_ONCE_KEY,
+              "true"
+            );
+            sessionStorage.setItem(
+              SUPPRESS_PARTY_RESET_ONCE_KEY,
               "true"
             );
             window.location.reload();
@@ -18550,6 +18576,17 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
   }
 
   async function connectYouTube() {
+    if (!YOUTUBE_RELEASE_ENABLED) {
+      const message = ui(
+        `YouTube kommer i FyFlade ${YOUTUBE_PLANNED_VERSION}. Twitch og Kick er tilgjengelige i versjon 1.0.`,
+        `YouTube is coming in FyFlade ${YOUTUBE_PLANNED_VERSION}. Twitch and Kick are available in version 1.0.`
+      );
+
+      setYoutubeLoginError("");
+      setAccountNotice(message);
+      return;
+    }
+
     if (
       !youtubeOAuthConfigured
     ) {
@@ -18777,6 +18814,10 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
   }
 
   async function restoreYouTubeLogin() {
+    if (!YOUTUBE_RELEASE_ENABLED) {
+      return;
+    }
+
     const clientId =
       readYouTubeOAuthClientId();
 
@@ -36117,6 +36158,8 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                 : 430,
             center:
               true,
+            visible:
+              !isSettings,
             resizable:
               true,
             decorations:
@@ -36128,7 +36171,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                 ? theme.appBg
                 : theme.panelRaised,
             focus:
-              true,
+              !isSettings,
           }
         );
 
@@ -36143,54 +36186,49 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
 
       if (isSettings) {
         void detached.once("tauri://created", () => {
-          const saved = readSettingsWindowGeometry();
-          void availableMonitors()
-            .then(async (monitors) => {
-              const bounds = monitors.map((monitor) => ({
-                  x: monitor.position.x,
-                  y: monitor.position.y,
-                  width: monitor.size.width,
-                  height: monitor.size.height,
-                }));
-              if (saved) {
-                const fitted = fitGeometryToMonitors(saved, bounds);
-                await Promise.all([
-                  detached.setSize(new PhysicalSize(fitted.width, fitted.height)),
-                  detached.setPosition(new PhysicalPosition(fitted.x, fitted.y)),
-                ]);
-                return;
-              }
-
-              const mainWindow = await WebviewWindow.getByLabel("main");
+          void (async () => {
+            try {
+              const [monitors, mainWindow] = await Promise.all([
+                availableMonitors(),
+                WebviewWindow.getByLabel("main"),
+              ]);
               if (!mainWindow) return;
+
               const [mainPosition, mainSize] = await Promise.all([
                 mainWindow.outerPosition(),
                 mainWindow.outerSize(),
               ]);
-              const width = 760;
-              const height = 580;
-              const gap = 12;
-              const monitor = bounds.find((item) =>
-                mainPosition.x >= item.x &&
-                mainPosition.x < item.x + item.width &&
-                mainPosition.y >= item.y &&
-                mainPosition.y < item.y + item.height
-              ) || bounds[0];
+              const monitor = monitors.find((item) =>
+                mainPosition.x >= item.position.x &&
+                mainPosition.x < item.position.x + item.size.width &&
+                mainPosition.y >= item.position.y &&
+                mainPosition.y < item.position.y + item.size.height
+              ) || monitors[0];
               if (!monitor) return;
-              const right = mainPosition.x + mainSize.width + gap;
-              const left = mainPosition.x - width - gap;
-              const x = right + width <= monitor.x + monitor.width
-                ? right
-                : left >= monitor.x
-                  ? left
-                  : Math.max(monitor.x, monitor.x + monitor.width - width - gap);
-              const y = Math.max(monitor.y, Math.min(mainPosition.y, monitor.y + monitor.height - height));
+
+              const width = Math.min(760, monitor.size.width);
+              const height = Math.min(580, monitor.size.height);
+              const centeredX = mainPosition.x + Math.round((mainSize.width - width) / 2);
+              const centeredY = mainPosition.y + Math.round((mainSize.height - height) / 2);
+              const x = Math.max(
+                monitor.position.x,
+                Math.min(centeredX, monitor.position.x + monitor.size.width - width)
+              );
+              const y = Math.max(
+                monitor.position.y,
+                Math.min(centeredY, monitor.position.y + monitor.size.height - height)
+              );
               await Promise.all([
                 detached.setSize(new PhysicalSize(width, height)),
                 detached.setPosition(new PhysicalPosition(x, y)),
               ]);
-            })
-            .catch(() => undefined);
+            } catch {
+              // The centered builder position is a safe fallback.
+            } finally {
+              await detached.show().catch(() => undefined);
+              await detached.setFocus().catch(() => undefined);
+            }
+          })();
         });
       }
     }
@@ -36213,13 +36251,38 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
       FYFLATE_WINDOW_MODE ===
       "settings"
     ) {
+      if (settingsClosePendingRef.current) return;
+
+      if (
+        settingsInitialStorageSnapshotRef.current ===
+        captureLocalStorageSnapshot()
+      ) {
+        void WebviewWindow.getCurrent().close();
+        return;
+      }
+
+      settingsClosePendingRef.current = true;
+      const syncToken = String(Date.now());
+      let fallbackTimer = 0;
+      const finishClose = () => {
+        window.removeEventListener("storage", handleSyncAck);
+        if (fallbackTimer) window.clearTimeout(fallbackTimer);
+        void WebviewWindow.getCurrent().close();
+      };
+      const handleSyncAck = (event: StorageEvent) => {
+        if (
+          event.key === FLOATING_SETTINGS_SYNC_ACK_KEY &&
+          event.newValue === syncToken
+        ) {
+          finishClose();
+        }
+      };
+      window.addEventListener("storage", handleSyncAck);
       localStorage.setItem(
         FLOATING_SETTINGS_SYNC_KEY,
-        String(
-          Date.now()
-        )
+        syncToken
       );
-      void WebviewWindow.getCurrent().close();
+      fallbackTimer = window.setTimeout(finishClose, 1_500);
       return;
     }
 
@@ -41174,6 +41237,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
             youtube: connectingYoutube,
           }}
           kickAvailable={kickOAuthConfigured}
+          youtubeAvailable={YOUTUBE_RELEASE_ENABLED}
           onStart={() => setFirstRunStage("accounts")}
           onSkip={skipFirstRun}
           onContinue={continueFirstRun}
@@ -45642,7 +45706,9 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <strong style={{ fontSize: 12 }}>{youtubeConnected ? youtubeChannelName : "YouTube"}</strong>
                           <div style={{ color: connectionHealthColor(youtubeHealthState), fontSize: 10, marginTop: 3 }}>
-                            {youtubeConnected
+                            {!YOUTUBE_RELEASE_ENABLED
+                              ? ui(`Kommer i versjon ${YOUTUBE_PLANNED_VERSION}`, `Coming in version ${YOUTUBE_PLANNED_VERSION}`)
+                              : youtubeConnected
                               ? connectionHealthDetail(youtubeHealthState, "YouTube")
                               : connectingYoutube
                                 ? ui("Kobler til...", "Connecting...")
@@ -45657,7 +45723,11 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                           )}
                         </div>
 
-                        {youtubeConnected ? (
+                        {!YOUTUBE_RELEASE_ENABLED ? (
+                          <button disabled style={{ ...smallButton, opacity: .68 }}>
+                            {ui(`Kommer i ${YOUTUBE_PLANNED_VERSION}`, `Coming in ${YOUTUBE_PLANNED_VERSION}`)}
+                          </button>
+                        ) : youtubeConnected ? (
                           <>
                             <button onClick={() => void openYouTubeChannel()} style={smallButton}>{ui("Åpne", "Open")} ↗</button>
                             <button disabled={connectingYoutube} onClick={() => void disconnectYouTube()} style={{ ...smallButton, color: "#ff827a", border: "1px solid #6c3438" }}>{ui("Fjern", "Remove")}</button>
@@ -45854,9 +45924,9 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                           fontWeight: 700,
                         }}
                       >
-                        {youtubeOAuthConfigured
+                        {YOUTUBE_RELEASE_ENABLED && youtubeOAuthConfigured
                           ? ui("FyFlade-innlogging klar", "FyFlade sign-in ready")
-                          : ui("Ikke konfigurert i denne versjonen", "Not configured in this build")}
+                          : ui(`Planlagt for ${YOUTUBE_PLANNED_VERSION}`, `Planned for ${YOUTUBE_PLANNED_VERSION}`)}
                       </span>
                     </div>
 
@@ -47806,8 +47876,8 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                     </div>
                     <div style={{ marginTop: 5, color: theme.muted, fontSize: 10.5, lineHeight: "16px" }}>
                       {ui(
-                        "FyFlade lagrer innstillinger og eventuell chatlogg lokalt på denne PC-en. Innloggingstoken og Client Secret lagres i Windows Credential Manager. De sendes ikke til FyFlade-utvikleren og slettes ikke av valgene på denne siden.",
-                        "FyFlade stores settings and optional chat history locally on this PC. Sign-in tokens and Client Secrets are stored in Windows Credential Manager. They are not sent to the FyFlade developer and are not deleted by the controls on this page."
+                        "FyFlade lagrer innstillinger og eventuell chatlogg lokalt på denne PC-en. Oppdateringstoken og lokale Client Secrets lagres i Windows Credential Manager. Kick-kode og token behandles kortvarig over kryptert HTTPS av FyFlades Cloudflare-tjeneste ved innlogging og fornyelse, men serverkoden lagrer dem ikke eller logger innholdet i forespørselen. Valgene på denne siden sletter ikke innlogginger.",
+                        "FyFlade stores settings and optional chat history locally on this PC. Refresh tokens and local Client Secrets are stored in Windows Credential Manager. Kick authorization codes and tokens are handled briefly over encrypted HTTPS by FyFlade's Cloudflare service during sign-in and refresh, but the server code does not persist them or log the request body. The controls on this page do not remove sign-ins."
                       )}
                     </div>
 
@@ -48582,7 +48652,7 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                 </div>
                 <div style={{ padding: 14 }}>
                   <div style={{ color: theme.muted, fontSize: 11, lineHeight: "17px", marginBottom: 10 }}>
-                    {ui("Velg plattform. Twitch, YouTube og Kick kan logges inn nå.", "Choose a platform. Twitch, YouTube and Kick can be connected now.")}
+                    {ui("Velg plattform. Twitch og Kick kan logges inn nå. YouTube kommer i 1.1.", "Choose a platform. Twitch and Kick can be connected now. YouTube is coming in 1.1.")}
                   </div>
                   <div style={{ display: "grid", gap: 7 }}>
                     <button disabled={twitchConnected || connectingTwitch} onClick={() => { setShowAddAccount(false); setAccountNotice(""); void connectTwitch(); }} style={{ height: 48, display: "flex", alignItems: "center", gap: 10, padding: "0 12px", border: `1px solid ${theme.borderStrong}`, borderRadius: 5, background: theme.input, color: theme.text, cursor: twitchConnected ? "default" : "pointer", opacity: twitchConnected ? .55 : 1, fontFamily: "inherit", textAlign: "left" }}>
@@ -48612,18 +48682,20 @@ return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 132px
                       </span>
                     </button>
                     <button
-                      disabled={youtubeConnected || connectingYoutube || !youtubeOAuthConfigured}
+                      disabled={!YOUTUBE_RELEASE_ENABLED || youtubeConnected || connectingYoutube || !youtubeOAuthConfigured}
                       onClick={() => {
                         setShowAddAccount(false);
                         void connectYouTube();
                       }}
-                      style={{ height: 48, display: "flex", alignItems: "center", gap: 10, padding: "0 12px", border: `1px solid ${theme.borderStrong}`, borderRadius: 5, background: theme.input, color: theme.text, cursor: youtubeConnected || !youtubeOAuthConfigured ? "default" : "pointer", opacity: youtubeConnected || !youtubeOAuthConfigured ? .55 : 1, fontFamily: "inherit", textAlign: "left" }}
+                      style={{ height: 48, display: "flex", alignItems: "center", gap: 10, padding: "0 12px", border: `1px solid ${theme.borderStrong}`, borderRadius: 5, background: theme.input, color: theme.text, cursor: !YOUTUBE_RELEASE_ENABLED || youtubeConnected || !youtubeOAuthConfigured ? "default" : "pointer", opacity: !YOUTUBE_RELEASE_ENABLED || youtubeConnected || !youtubeOAuthConfigured ? .55 : 1, fontFamily: "inherit", textAlign: "left" }}
                     >
                       <span style={{ width: 18, height: 18, borderRadius: 3, display: "grid", placeItems: "center", background: "#ff0033", color: "white" }}><YouTubeIcon size={12} /></span>
                       <span>
                         <strong>YouTube</strong>
                         <div style={{ color: theme.subtle, fontSize: 10, marginTop: 2 }}>
-                          {youtubeConnected
+                          {!YOUTUBE_RELEASE_ENABLED
+                            ? ui("Kommer i FyFlade 1.1", "Coming in FyFlade 1.1")
+                            : youtubeConnected
                             ? ui("Allerede tilkoblet", "Already connected")
                             : connectingYoutube
                               ? ui("Venter på Google...", "Waiting for Google...")

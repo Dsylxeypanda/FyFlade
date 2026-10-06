@@ -13,6 +13,12 @@ never ask for or receive a user's account password. Refresh tokens and locally
 configured client secrets are stored through Windows Credential Manager. Access
 tokens are kept in memory while the app is running.
 
+Kick token exchange and refresh requests pass over HTTPS through the FyFlade
+Cloudflare relay because the private Kick application secret remains on the
+server. The relay does not persist tokens or log request bodies. Signed-in Kick
+identity and live webhook messages are handled transiently to authorize and
+deliver chat, but are not stored as server-side chat history.
+
 Settings, channel lists, nicknames, ignores, and optional chat history stay on
 the user's PC. Backups intentionally exclude OAuth data, tokens, client IDs,
 client secrets, webhook values, and quota credentials.

@@ -25,6 +25,7 @@ type FirstRunSetupProps = {
     youtube: boolean;
   };
   kickAvailable: boolean;
+  youtubeAvailable: boolean;
   onStart: () => void;
   onSkip: () => void;
   onContinue: () => void;
@@ -40,6 +41,7 @@ export function FirstRunSetup({
   status,
   busy,
   kickAvailable,
+  youtubeAvailable,
   onStart,
   onSkip,
   onContinue,
@@ -93,7 +95,7 @@ export function FirstRunSetup({
       color: "#ff0033",
       connected: status.youtube,
       waiting: busy.youtube,
-      available: true,
+      available: youtubeAvailable,
       onConnect: onConnectYouTube,
     },
   ];
@@ -152,7 +154,9 @@ export function FirstRunSetup({
                         : platform.waiting
                           ? (no ? "Venter på godkjenning…" : "Waiting for approval…")
                           : !platform.available
-                            ? (no ? "Tjenesten er ikke klar ennå" : "The service is not ready yet")
+                            ? platform.key === "youtube"
+                              ? (no ? "Kommer i FyFlade 1.1" : "Coming in FyFlade 1.1")
+                              : (no ? "Tjenesten er ikke klar ennå" : "The service is not ready yet")
                             : (no ? "Kan kobles til nå eller senere" : "Connect now or later")}
                     </div>
                   </div>
@@ -161,7 +165,11 @@ export function FirstRunSetup({
                     onClick={platform.onConnect}
                     style={{ ...secondaryButton, minWidth: 92, opacity: platform.connected || platform.waiting || !platform.available ? 0.5 : 1 }}
                   >
-                    {platform.connected ? (no ? "Koblet til" : "Connected") : (no ? "Koble til" : "Connect")}
+                    {platform.connected
+                      ? (no ? "Koblet til" : "Connected")
+                      : !platform.available && platform.key === "youtube"
+                        ? (no ? "Kommer snart" : "Coming soon")
+                        : (no ? "Koble til" : "Connect")}
                   </button>
                 </div>
               ))}
