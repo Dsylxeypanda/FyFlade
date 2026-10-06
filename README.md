@@ -14,6 +14,12 @@ The desktop application uses React, TypeScript, Vite, Tauri, and Rust. The Kick 
 
 Read [PRIVACY.md](PRIVACY.md), [SECURITY.md](SECURITY.md), and [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md) before distributing a build.
 
+## Code signing policy
+
+Free code signing is intended to be provided by [SignPath.io](https://signpath.io/), with a certificate provided by [SignPath Foundation](https://signpath.org/). Official binaries must come from reviewed source in this repository, pass the documented release checks, and receive manual approval before signing.
+
+The project roles, privacy commitments, release-origin rules, and complete policy are documented in [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md).
+
 ## Local development
 
 Requirements:
