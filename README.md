@@ -16,7 +16,9 @@ Read [PRIVACY.md](PRIVACY.md), [SECURITY.md](SECURITY.md), and [CODE_SIGNING_POL
 
 ## Code signing policy
 
-Free code signing is intended to be provided by [SignPath.io](https://signpath.io/), with a certificate provided by [SignPath Foundation](https://signpath.org/). Official binaries must come from reviewed source in this repository, pass the documented release checks, and receive manual approval before signing.
+FyFlade does not currently have a trusted Windows Authenticode certificate. Early public beta packages may therefore be unsigned and can trigger a Microsoft Defender SmartScreen warning. An unsigned beta is published only from the official GitHub repository, is clearly labelled, and includes a SHA-256 checksum so users can verify the exact downloaded file.
+
+The project intends to add trusted code signing after it has established enough public adoption to qualify for an open-source signing program, or when another sustainable signing route is available. Updater metadata remains cryptographically signed with the separate protected Tauri updater key; that signature does not remove the Windows SmartScreen warning.
 
 The project roles, privacy commitments, release-origin rules, and complete policy are documented in [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md).
 
@@ -48,7 +50,7 @@ Run the complete automated release gate:
 - Portable edition: `scripts/build-fyflade-portable.ps1`
 - Release verification: `scripts/verify-fyflade-release.ps1` and `scripts/verify-fyflade-portable.ps1`
 
-Unsigned development packages must not be presented as official FyFlade releases. See [PORTABLE.md](PORTABLE.md), [docs/RELEASE_TEST_CHECKLIST.md](docs/RELEASE_TEST_CHECKLIST.md), and [docs/RELEASE_READINESS_REPORT.md](docs/RELEASE_READINESS_REPORT.md).
+Unsigned development packages must not be presented as stable signed releases. A public unsigned beta must follow the warnings, origin checks, hashes, and approval rules in [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md). See [PORTABLE.md](PORTABLE.md), [docs/RELEASE_TEST_CHECKLIST.md](docs/RELEASE_TEST_CHECKLIST.md), and [docs/RELEASE_READINESS_REPORT.md](docs/RELEASE_READINESS_REPORT.md).
 
 ## License and official branding
 

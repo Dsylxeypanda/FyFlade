@@ -1,20 +1,25 @@
 # Code signing policy
 
-FyFlade's official Windows releases are intended to use free code signing provided by SignPath.io, with a certificate provided by SignPath Foundation.
+FyFlade does not currently have a trusted Windows Authenticode certificate. The SignPath Foundation application was not approved because the new project does not yet have enough public adoption and independent visibility. This was not a security or quality rejection.
+
+Early public beta packages may be unsigned. Windows can display a Microsoft Defender SmartScreen warning for these files. FyFlade will pursue trusted signing again after the project has established sufficient public activity, or when another sustainable signing route is available.
 
 ## Team roles
 
 - Committer and reviewer: Dsylxeypanda
-- Signing approver: Dsylxeypanda
+- Release approver: Dsylxeypanda
 
-Contributions from people without direct commit access require maintainer review. Every public signing request requires manual approval by the signing approver. Build scripts, dependency changes, CI configuration, authentication, updater logic, and release metadata are part of the security review.
+Contributions from people without direct commit access require maintainer review. Every public release requires manual approval by the release approver. Build scripts, dependency changes, CI configuration, authentication, updater logic, and release metadata are part of the security review.
 
 ## Release origin
 
 - Official binaries must be reproducibly connected to the public FyFlade source repository and its reviewed release commit.
 - Release builds must pass `scripts/test-fyflade-release.ps1 -IncludeDesktopBuild` and the applicable manual checks in `docs/RELEASE_TEST_CHECKLIST.md`.
 - The private Tauri updater key and its password are never stored in the repository.
-- Unsigned or locally modified files are never published as official FyFlade releases.
+- A public unsigned beta must be clearly labelled **Beta — unsigned**, link to its exact public source revision, and state that Windows may show a SmartScreen warning.
+- Every published installer and portable ZIP must have its SHA-256 checksum shown beside the download or in the matching GitHub release notes.
+- Public files are distributed only through the official FyFlade GitHub repository or a link from `fyflade.pages.dev`; arbitrary locally modified files are not official releases.
+- Stable releases should use trusted Authenticode signing. Until that is available, FyFlade releases remain beta releases.
 - Artifact product name and product version must match the reviewed source and release metadata.
 
 ## Privacy and network services

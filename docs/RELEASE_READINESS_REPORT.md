@@ -1,12 +1,12 @@
 # FyFlade 1.0 release readiness report
 
-Date: 2026-10-06
+Date: 2026-10-08
 
 ## Decision
 
-The current source passes every automated release gate and fresh unsigned Windows test artifacts have been produced. FyFlade is ready for controlled hands-on testing, but it is **not ready for public download yet**. Public release is still blocked by release signing and the clean-machine/manual platform test matrix in `RELEASE_TEST_CHECKLIST.md`.
+The current source passes every automated release gate and fresh unsigned Windows test artifacts have been produced. FyFlade is being prepared as an explicitly labelled **unsigned public beta**, not as a signed stable release. Publication still requires the relevant clean-machine/manual checks in `RELEASE_TEST_CHECKLIST.md`, final artifact hashes, a link to the exact public source revision, and a clear Microsoft Defender SmartScreen warning.
 
-No unsigned artifact should be uploaded to the FyFlade website or update endpoint.
+Unsigned artifacts must not be described as signed or stable. They may be published only through the official GitHub repository, with matching SHA-256 checksums and the warning required by `CODE_SIGNING_POLICY.md`.
 
 ## Current product state
 
@@ -78,26 +78,25 @@ FyFlade. This does not block the Twitch/Kick-only 1.0 release.
 
 The frontend build has one non-blocking large-bundle warning (about 771 kB before gzip and 222 kB gzipped). This is a future startup optimization, not a correctness failure.
 
-## Local unsigned test artifacts
+## Unsigned beta candidate artifacts
 
-These files are for local testing only and must not be published:
+These files remain beta candidates until their final verification and release notes are complete:
 
 - Portable ZIP: `release/portable/FyFlade-1.0.0-windows-x64-portable.zip`
-  - SHA-256: `227AD3E92AEFFBA9EEF47EF869CB98F97BE3D87A136E00A489EDC4472FD60736`
-- NSIS installer: `src-tauri/target/release/bundle/nsis/FyFlade_1.0.0_x64-setup.exe`
-  - SHA-256: `CDE5870372BF8E668A2E57F58C1B386BC163DFA6C1ABE150CAFFFAE42D459252`
-  - Tauri updater signature: present (`416` bytes)
-  - Signature-file SHA-256: `3D0CA9BE39A4F4A67461A016F9B5CF40EBED94ADF432218C49168C809E2BF2F0`
+  - SHA-256: `32A78FDDC590AD9AE3B33461492D3B07C8A62B1F46B1C1E63F5DD2F247CF5ABC`
+  - Authenticode status: `NotSigned`
+  - Portable marker: verified
+- The installer candidate is withheld from this first beta preparation. The portable ZIP does not modify the Windows installation database and keeps beta testing easier to reverse.
 
-Both executable builds are currently `NotSigned`. Old artifacts were moved into timestamped folders under `release/archive` rather than overwritten.
+Windows may show a SmartScreen warning because the executable is not Authenticode-signed. Old artifacts were moved into timestamped folders under `release/archive` rather than overwritten.
 
-## Remaining public-release blockers
+## Remaining beta-publication checks
 
-1. Obtain/configure a trusted Windows Authenticode code-signing identity or choose a Store/open-source signing distribution path.
-2. Rebuild both public artifacts, verify Authenticode, and publish their final hashes.
+1. Rebuild or select the final beta artifacts, record their `NotSigned` Authenticode status, and publish their exact SHA-256 hashes.
+2. Publish release notes that prominently say **Beta — unsigned**, explain the possible SmartScreen warning, and link to the exact source revision.
 3. Complete every relevant 1.0 manual checkbox on a clean Windows user/PC with
    real Twitch, Kick, OBS, multi-monitor, portable, install/uninstall, and update
    testing.
-4. Test one genuine signed update from an older signed build without losing data.
+4. Keep the automatic updater disabled for an unsigned portable beta. Test signed updating when a trusted stable signing route becomes available.
 
-Until these pass, FyFlade should be described as a test candidate rather than a finished public release.
+Until these pass, FyFlade should be described as a beta candidate rather than a published beta or finished stable release.

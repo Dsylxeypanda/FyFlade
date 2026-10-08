@@ -1,6 +1,6 @@
 # FyFlade 1.0 release test checklist
 
-This is the final release gate for the Windows installer and portable ZIP. A public build is **not release-ready** until every automated check passes, every relevant manual box is checked on a clean Windows user account, and both public artifacts have valid signatures.
+This is the final release gate for the Windows installer and portable ZIP. A stable public build is **not release-ready** until every automated check passes, every relevant manual box is checked on a clean Windows user account, and both public artifacts have valid Authenticode signatures. An explicitly labelled unsigned beta may be published only when the beta-specific origin, warning, and checksum checks below pass.
 
 ## Automated gate
 
@@ -13,7 +13,7 @@ This is the final release gate for the Windows installer and portable ZIP. A pub
 
 ## Clean install and first start
 
-- [ ] Install the signed NSIS build on a Windows account that has never run FyFlade.
+- [ ] Install the exact beta NSIS build on a Windows account that has never run FyFlade.
 - [ ] Confirm the title, icon, Start menu entry, installer, and uninstall entry all say FyFlade 1.0.
 - [ ] Confirm the first-start tutorial is readable in Norwegian and English, can move backward/forward, scrolls to targets, and can be skipped and restarted.
 - [ ] Confirm reduced-motion mode removes animated tutorial transitions.
@@ -87,8 +87,9 @@ This is the final release gate for the Windows installer and portable ZIP. A pub
 - [x] Validate the existing updater key locally with `scripts/validate-fyflade-updater-key.ps1`; the password was not saved in the repository or chat.
 - [ ] Build the installer with `scripts/build-fyflade-release.ps1`; verify it with `scripts/verify-fyflade-release.ps1`.
 - [x] Confirm the Tauri updater `.sig` is present for the current installer.
-- [ ] Confirm the installer EXE has a valid Windows Authenticode signature.
-- [ ] Install an older signed test version and complete a real signed in-app update without losing data.
+- [ ] For a stable release, confirm the installer EXE has a valid Windows Authenticode signature.
+- [ ] For an unsigned beta, confirm the download page and release notes say **Beta — unsigned**, explain the possible SmartScreen warning, link to the public source revision, and publish the exact SHA-256 hashes.
+- [ ] For a future stable release, install an older signed test version and complete a real signed in-app update without losing data.
 - [ ] Build the portable ZIP with `scripts/build-fyflade-portable.ps1`; verify it with `scripts/verify-fyflade-portable.ps1`.
 - [ ] Confirm portable FyFlade starts from an extracted writable folder, identifies itself as portable in Settings, and disables installer-based automatic updates.
 - [ ] Copy the portable folder to another Windows account and confirm credentials do not travel with it.
@@ -100,4 +101,4 @@ This is the final release gate for the Windows installer and portable ZIP. A pub
 - [ ] The Cloudflare relay/update endpoint and FyFlade website have been tested from a network outside the developer's home network.
 - [ ] The privacy/security text and download links match the exact published artifacts.
 - [ ] A rollback copy of the previous public release and update metadata exists.
-- [ ] The developer records the date, artifact hashes, signer identity, and tester name before publishing.
+- [ ] The developer records the date, artifact hashes, Authenticode status, source revision, and tester name before publishing.
